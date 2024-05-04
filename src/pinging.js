@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 
-const INTERVALO_PETICIONES = 5 * 1000; // 5 minutos en milisegundos
+export const INTERVALO_PETICIONES = 5 * 1000; // 5 minutos en milisegundos
+
 setInterval(async () => {
   try {
     // Realizar una petición GET a tu servidor en Render
@@ -11,4 +12,4 @@ setInterval(async () => {
   }
 }, INTERVALO_PETICIONES);
 
-export default module
+export default setInterval
