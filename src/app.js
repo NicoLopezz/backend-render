@@ -18,7 +18,7 @@ setInterval(async () => {
 
 
 //SETTING
-app.set('port' , process.env.PORT || 10000); //Si no hay otro puerto entonces ejecuta en el 3000
+app.set('port' , process.env.PORT || 10001); //Si no hay otro puerto entonces ejecuta en el 3000
 
 app.use(express.json());
 
