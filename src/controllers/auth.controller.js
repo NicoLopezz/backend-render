@@ -40,7 +40,7 @@ async function register(req,res){
 
     //create JWT
     const token = jsonwebtoken.sign(
-      {userMail:newUsuario.Email}, process.env.JWT_SERCRET, {expiresIn:process.env.JWT_SERCRET})
+      {userMail:newUsuario.Email}, process.env.JWT_SERCRET_KEY, {expiresIn:process.env.JWT_EXPIRE})
 
     //create cookie
 
