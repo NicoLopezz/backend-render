@@ -8,21 +8,24 @@ const router = Router() // lets run
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-router.post("/login/:email/code", autenthication.sendEmail)
+// router.post("/login/:email/code", function())
 
 router.post("/register" , autenthication.register) 
- 
 router.post("/login" , autenthication.login) 
+
+
+router.get("/verify" , (req, res) => {
+    res.sendFile(path.join(__dirname,"../../public/verify.html"));
+})
+
+router.get("/verify/:token" , autenthication.verifyCount) //ACA GUARDO EL TOKEN DE LA PERSONA PARA LUEGO VERIFICARLO
 
 router.get("/register", (req, res) => {
     res.sendFile(path.join(__dirname,"../../public/index.html"));
 });
-
 router.get("/login", (req, res) => {
     res.sendFile(path.join(__dirname,"../../public/login.html"));
 });
-
-
 router.get("/loginUser", (req, res) => {
     res.sendFile(path.join(__dirname,"../../public/loginUser.html"));
 });

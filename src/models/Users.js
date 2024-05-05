@@ -32,8 +32,8 @@ const User = new Schema({
         trim: true,
     },
 
-    Pass2: {
-        type: String,
+    Verify: {
+        type: Boolean,
         trim: true,
     },
 }, {
