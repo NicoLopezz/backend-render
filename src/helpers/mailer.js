@@ -84,7 +84,7 @@ function mailVerificator(token){
           <h1>Validación de Contraseña</h1>
           <p>Estimado Usuario,</p>
           <p>Para completar el proceso de validación de su cuenta, haga clic en el siguiente enlace:</p>
-          <a href="http://localhost:10001/api/verify/${token}" class="btn">Validar Contraseña</a>
+          <a href="https://backend-render-test-se07.onrender.com/api/verify/${token}" class="btn">Validar Contraseña</a>
           <p class="footer">Si no solicitó este cambio, por favor ignore este mensaje.</p>
       </div>
   </body>
