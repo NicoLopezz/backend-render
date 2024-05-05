@@ -93,10 +93,10 @@ async function login (req ,res){
 
     if (userDb && newUsuario.Email==userDb.Email && isMatch){
       console.log("user loged with: " + newUsuario.Email )
-      return res.status(201).json({ status: "logeado", message: `Usser mail ${newUsuario.Email} susccesfull`})
+      return res.status(201).json({ status: "logeado", message: `Usser mail ${newUsuario.Email} susccesfull` , redirect:"/api/verify"})
 
       //REDIRIGIR LUEGO DE LOGEAR CORRECTAMENTE !!! 
-      
+
     }else{
       res.status(401).send({status:"Error",message:"Las contraseñas no coinciden"})
     }
