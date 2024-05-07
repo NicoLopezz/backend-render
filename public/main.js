@@ -11,7 +11,7 @@ formElement.addEventListener("submit", async(event) => {
     let email = document.getElementById("email").value
     let datosUsuario = {Name : nombre , Surname : apellido , Company : compañia , Country : pais , Pass : password, Pass2 : password2,  Email : email}
     let datosUsuarioJson = JSON.stringify(datosUsuario);
-    const res = await fetch("https://backend-render-test-se07.onrender.com/api/register", {     
+    const res = await fetch("http://localhost:10001/api/register", {     
         method: 'POST',
             headers:
             {

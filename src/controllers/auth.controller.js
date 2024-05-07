@@ -45,7 +45,7 @@ async function register(req,res){
     //create cookie
 
     const cookieOptions = {
-      expire: new Date(Date.now() + process.env.JWT_COOKIRE_EXPIRE * 24 * 60 * 60 * 1000 ),
+      expire: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000 ),
       path: "/"
     }
 
@@ -72,33 +72,39 @@ async function login (req ,res){
     Pass: req.body.Pass})
     //retunr user from db
     const userDb = await Usuario.findOne({Email: newUsuario.Email})
-
-    //create JWT (AGREGO PARA QUE VIAJE EL EMAIL EN EL JWT)
-        const token = jsonwebtoken.sign(
-          {userMail:newUsuario.Email}, process.env.JWT_SERCRET, {expiresIn:process.env.JWT_SERCRET})
-    
-        //create cookie
-        
-        const cookieOptions = {
-          expire: new Date(Date.now() + process.env.JWT_COOKIRE_EXPIRE * 24 * 60 * 60 * 1000 ),
-          path: "/"
-        }
-        res.cookie("jwt",token,cookieOptions)
-         
-    //check hashes
-    const isMatch = await bcrypt.compare(req.body.Pass, userDb.Pass)
-
-    if(!userDb.Verify)
-       return res.status(401).json({status: "not logged" , message: "not valid email usser"}) 
-
-    if (userDb && newUsuario.Email==userDb.Email && isMatch){
-      console.log("user loged with: " + newUsuario.Email )
-      return res.status(201).json({ status: "logeado", message: `Usser mail ${newUsuario.Email} susccesfull` , redirect:"/api/verify"})
-
-      //REDIRIGIR LUEGO DE LOGEAR CORRECTAMENTE !!! 
+    if(userDb){
+      //chequeo que el mail ingresado exista
+      //create JWT (AGREGO PARA QUE VIAJE EL EMAIL EN EL JWT)
+          const token = jsonwebtoken.sign(
+            {userMail:newUsuario.Email}, process.env.JWT_SERCRET_KEY, {expiresIn:process.env.JWT_EXPIRE})
+      
+          //create cookie
+          
+          const cookieOptions = {
+            expire: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000 ),
+            path: "/"
+          }
+          res.cookie("jwt",token,cookieOptions)
+           
+      //check hashes
+      
+      const isMatch = await bcrypt.compare(req.body.Pass, userDb.Pass)
+  
+      if(!userDb.Verify)
+         return res.status(401).json({status: "not logged" , message: "not valid email usser"}) 
+  
+      if (userDb && newUsuario.Email==userDb.Email && isMatch){
+        console.log("user loged with: " + newUsuario.Email )
+        return res.status(201).json({ status: "logeado", message: `Usser mail ${newUsuario.Email} susccesfull` , redirect:"/api/verify"})
+  
+        //REDIRIGIR LUEGO DE LOGEAR CORRECTAMENTE !!! 
+  
+      }else{
+        res.status(401).send({status:"Error",message:"Las contraseñas no coinciden"})
+      }
 
     }else{
-      res.status(401).send({status:"Error",message:"Las contraseñas no coinciden"})
+      return res.status(401).send({status:"Error",message:"Email not exist in database"})
     }
 }
 
@@ -146,10 +152,21 @@ async function verifyCount(req,res){
   }
 }
 
+async function allUsers(req, res){
+
+  try {
+    const usuarios = await Usuario.find({});
+    res.json(usuarios);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 export const methods = {
     register,
     login,
     verifyCount,
+    allUsers,
   }
 
 

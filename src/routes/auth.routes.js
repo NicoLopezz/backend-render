@@ -20,6 +20,8 @@ router.get("/verify" , (req, res) => {
 
 router.get("/verify/:token" , autenthication.verifyCount) //ACA GUARDO EL TOKEN DE LA PERSONA PARA LUEGO VERIFICARLO
 
+router.get("/allUsers" , autenthication.allUsers) //ACA GUARDO EL TOKEN DE LA PERSONA PARA LUEGO VERIFICARLO
+
 router.get("/register", (req, res) => {
     res.sendFile(path.join(__dirname,"../../public/index.html"));
 });
