@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { fileURLToPath } from 'url';
 import path, { dirname } from 'path';
 import {methods as autenthication} from "../controllers/auth.controller.js"
-// import {transporter} from '../helpers/mailer.js'
+
 
 const router = Router() // lets run
 const __filename = fileURLToPath(import.meta.url);
@@ -33,10 +33,3 @@ router.get("/loginUser", (req, res) => {
 });
 
 export default router;
-
-
-
-
-
-
-

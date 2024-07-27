@@ -1,11 +1,9 @@
-// import { ok } from 'assert';
+
 import Usuario from '../models/Users.js'
 import bcrypt from 'bcryptjs'
 import {sendEmailVeirifcation} from '../helpers/mailer.js'
 import jsonwebtoken from 'jsonwebtoken'
 import {config} from 'dotenv'
-// import { Verify } from 'crypto';
-// import { CookieJar } from 'fetch';
 
 config();
 
@@ -40,7 +38,7 @@ async function register(req,res){
 
     //create JWT
     const token = jsonwebtoken.sign(
-      {userMail:newUsuario.Email}, process.env.JWT_SERCRET_KEY, {expiresIn:process.env.JWT_EXPIRE})
+      {userMail:newUsuario.Email}, process.env.JWT_SECRET_KEY, {expiresIn:process.env.JWT_EXPIRE})
 
     //create cookie
 
@@ -54,8 +52,6 @@ async function register(req,res){
       //mail check send
       const mail = await sendEmailVeirifcation(newUsuario.Email, token)
   
-
-
      if(mail.accepted===0){
       return res(500).send({status:"error" , message: "error email to send verification"})
      }
@@ -90,8 +86,8 @@ async function login (req ,res){
       
       const isMatch = await bcrypt.compare(req.body.Pass, userDb.Pass)
   
-      if(!userDb.Verify)
-         return res.status(401).json({status: "not logged" , message: "not valid email usser"}) 
+      // if(!userDb.Verify)
+      //    return res.status(401).json({status: "not logged" , message: "not valid email usser"}) 
   
       if (userDb && newUsuario.Email==userDb.Email && isMatch){
         console.log("user loged with: " + newUsuario.Email )
@@ -109,47 +105,56 @@ async function login (req ,res){
 }
 
 async function verifyCount(req,res){
-
-  try {
-    //capturo el jwt de mi cookie de mi header
-    const cookieJWT = req.headers.cookie.split("; ").find(cookie => cookie.startsWith("jwt=")).slice(4);
-    const decodificate = jsonwebtoken.verify(cookieJWT, process.env.JWT_SERCRET)
-    
-    console.log(`el valor de decodificada es ${decodificate.userMail}`)
-    
-    const userDb = await Usuario.findOne({Email:decodificate.userMail})
-    console.log("valor del usuario verificado " + userDb.Verify)
-    userDb.Verify = true
-    userDb.save()
-    console.log("valor del usuario verificado " + userDb.Verify)
-
-    res.redirect("/api/verify")
-    
-  //   if(!decodificate || !decodificate.mail){
-  //     res.status(500);
-  //     res.redirect("/").send({status:"erroe" , message: "error in token"})
-  //   }
-
-    //create JWT
-    // const token = jsonwebtoken.sign(
-    //   {userMail:decodificate.mail}, process.env.JWT_SERCRET, {expiresIn:process.env.JWT_SERCRET})
-        
-    // //create cookie
-        
-    // const cookieOptions = {
-    //   expire: new Date(Date.now() + process.env.JWT_COOKIRE_EXPIRE * 24 * 60 * 60 * 1000 ),
-    //   path: "/"
-    // }
-        
-  //   res.cookie("jwt",token,cookieOptions)
-  //   res.redirect("/verify")
-
-
-
-  } catch (error) {
-    res.status(500);
-    res.redirect("/")
-  }
+    try {
+      console.log("Entre en verify!!");
+  
+      // Verifica si las cookies están presentes
+      if (!req.headers.cookie) {
+        throw new Error("No cookies found");
+      }
+  
+      // Captura el JWT de la cookie
+      const cookieJWT = req.headers.cookie
+        .split(";")
+        .find(cookie => cookie.trim().startsWith("jwt="));
+  
+      // Verifica si la cookie "jwt" está presente
+      if (!cookieJWT) {
+        throw new Error("JWT cookie not found");
+      }
+  
+      // Extrae el JWT de la cookie
+      const token = cookieJWT.split("=")[1];
+      console.log("El cookie JWT ES:", token);
+  
+      // Decodifica el JWT
+      const decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET_KEY);
+      console.log("El token decodificado ES:", decoded);
+  
+      // Verifica si el JWT tiene el campo "userMail"
+      if (!decoded.userMail) {
+        throw new Error("Token does not contain userMail");
+      }
+  
+      // Busca el usuario en la base de datos
+      const userDb = await Usuario.findOne({ Email: decoded.userMail });
+      if (!userDb) {
+        throw new Error("User not found");
+      }
+  
+      // Actualiza y guarda el estado de verificación del usuario
+      console.log("Valor del usuario verificado:", userDb.Verify);
+      userDb.Verify = true;
+      await userDb.save();
+      console.log("Valor del usuario verificado:", userDb.Verify);
+  
+      // Redirige después de la verificación exitosa
+      res.redirect("/api/verify");
+  
+    } catch (error) {
+      console.error(error.message);
+      res.status(500).redirect("/");
+    }
 }
 
 async function allUsers(req, res){
@@ -168,6 +173,3 @@ export const methods = {
     verifyCount,
     allUsers,
   }
-
-
-
