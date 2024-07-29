@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
       pass: process.env.EMAIL_PASSWORD,
     },
     logger: true, // habilita la salida de registros
-    debug: true // habilita la depuración
+    debug: true // habilita la depuración!
   })
 
   export async function sendEmailVeirifcation (direccion, token){
