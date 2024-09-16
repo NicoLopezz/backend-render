@@ -1,8 +1,4 @@
 
-
-
-
-FINALY BACKEND OF OXYGEN 
--dont touch this 
+Backend desarrollado para cryptomate-
 
 

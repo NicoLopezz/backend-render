@@ -25,12 +25,16 @@ router.get("/allUsers" , autenthication.allUsers) //ACA GUARDO EL TOKEN DE LA PE
 router.get("/register", (req, res) => {
     res.sendFile(path.join(__dirname,"../../public/index.html"));
 });
+
+router.get("/register", (req, res) => {
+    res.sendFile(path.join(__dirname,"../../public/index.html"));
+});
+
 router.get("/login", (req, res) => {
     res.sendFile(path.join(__dirname,"../../public/login.html"));
 });
-router.get("/loginUser", (req, res) => {
-    res.sendFile(path.join(__dirname,"../../public/loginUser.html"));
-});
+
+router.get("/dashboard" , autenthication.verifyToken ,autenthication.dashboard  )
 
 export default router;
 

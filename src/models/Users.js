@@ -17,16 +17,6 @@ const User = new Schema({
         unique: false, //Unique mails
     },
 
-    Company: {
-        type: String,
-        trim: true
-    },
-
-    Country:{
-        type: String,
-        trim: true
-    },
-
     Pass: {
         type: String,
         trim: true,
@@ -36,6 +26,21 @@ const User = new Schema({
         type: Boolean,
         trim: true,
     },
+
+    Movimientos: [
+        {
+          tipo: { type: String },
+          cantidad: { type: Number },
+          fecha: { type: Date }
+        }
+      ],
+
+      Estado_Financiero: {
+        saldoInicial: { type: Number, default: 0 }
+      },
+
+
+
 }, {
     timestamps: true,  // when user is created
     versionKey: false , // esto es para evitar los __v de mongoose / nodemon
