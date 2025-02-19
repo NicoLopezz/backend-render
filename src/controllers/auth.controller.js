@@ -147,6 +147,7 @@ async function login(req, res) {
 
     // ✅ **Almacenar el token en la cookie**
     res.cookie("jwt", token, cookieOptions);
+    res.cookie("username", userDb.Name, cookieOptions); // ← Nueva cookie con el nombre del usuario
 
     console.log("✅ Cookie de sesión almacenada correctamente");
 
@@ -156,7 +157,7 @@ async function login(req, res) {
       message: `Usuario ${userDb.Email} ha iniciado sesión exitosamente`,
       user: {
         email: userDb.Email,
-        name: userDb.Nombre
+        name: userDb.Name
       }
     });
 
