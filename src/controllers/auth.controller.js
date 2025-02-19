@@ -143,7 +143,7 @@ async function login(req, res) {
       console.log("User logged in with: " + newUsuario.Email);
       return res.status(201).json({
         status: "logeado", 
-        message: `Usuario ${newUsuario.Email} ha iniciado sesión exitosamente`, 
+        message: `Usuario ${newUsuario.Email} ha iniciado sesión exitosamente OKKKKKK!`, 
         redirect: "/api/login"
       });
     } else {
