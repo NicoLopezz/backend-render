@@ -146,7 +146,13 @@ async function login(req, res) {
     };
 
     // ✅ **Almacenar el token en la cookie**
-    res.cookie("jwt", token, cookieOptions);
+    res.cookie("jwt", token, {
+      httpOnly: true, // Protege la cookie para que no sea accesible desde JS en el navegador
+      secure: process.env.NODE_ENV === "production", // Solo en HTTPS si está en producción
+      sameSite: "lax", // Permite el uso en el mismo sitio
+      maxAge: 24 * 60 * 60 * 1000, // Expira en 1 día
+  });
+  
     res.cookie("username", userDb.Name, cookieOptions); // ← Nueva cookie con el nombre del usuario
 
     console.log("✅ Cookie de sesión almacenada correctamente");

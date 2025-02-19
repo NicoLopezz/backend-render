@@ -9,7 +9,10 @@ app.use(setInterval)
 app.set('port' , process.env.PORT || 10001); 
 app.use(express.json());
 app.use(express.text()); 
-app.use(cors())
+app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+}));
 app.use("/api" , AuthRoutes); 
 app.use(express.static("public"))
 
