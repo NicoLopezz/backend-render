@@ -108,52 +108,61 @@ async function register(req,res){
 // }
 
 async function login(req, res) {
-  const newUsuario = new Usuario({
-    Email: req.body.Email,
-    Pass: req.body.Pass
-  });
+  try {
+    const { Email, Pass } = req.body;
 
-  // Buscar usuario en la base de datos por Email
-  const userDb = await Usuario.findOne({ Email: newUsuario.Email });
-  console.log("Buscando usuario")
-  
-  if (userDb) {
+    // Buscar usuario en la base de datos
+    const userDb = await Usuario.findOne({ Email });
+
+    if (!userDb) {
+      console.log("❌ El email no está en la base de datos");
+      return res.status(401).json({ status: "Error", message: "El email no existe en la base de datos" });
+    }
+
     // Comparar la contraseña ingresada con el hash almacenado
-    const isMatch = await bcrypt.compare(req.body.Pass, userDb.Pass);
-    console.log("usuario encontrado! y el pass coincide")
+    const isMatch = await bcrypt.compare(Pass, userDb.Pass);
 
-    if (isMatch) {
-      // Crear el JWT
-      const token = jsonwebtoken.sign(
-        { userMail: newUsuario.Email }, 
-        process.env.JWT_SECRET_KEY, 
-        { expiresIn: process.env.JWT_EXPIRE },
-        )
-        console.log("token creado")
-      ;
-
-      // Crear cookie con el token
-      const cookieOptions = {
-          expire: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000 ),
-          path: "/"
-         }
-      res.cookie("jwt", token, cookieOptions);
-
-      // Respuesta de éxito
-      console.log("User logged in with: " + newUsuario.Email);
-      return res.status(201).json({
-        status: "logeado", 
-        message: `Usuario ${newUsuario.Email} ha iniciado sesión exitosamente OKKKKkkkk!!!!!KK!`, 
-        redirect: "/api/login"
-      });
-    } else {
-      // Contraseña no coincide
+    if (!isMatch) {
+      console.log("❌ La contraseña es incorrecta");
       return res.status(401).json({ status: "Error", message: "La contraseña es incorrecta" });
     }
-  } else {
-    console.log("El mail no esta en la base de datos")
-    // Email no existe en la base de datos
-    return res.status(401).json({ status: "Error", message: "El email no existe en la base de datos" });
+
+    // ✅ **Generar el token JWT con el nombre del usuario**
+    const token = jsonwebtoken.sign(
+      { userMail: userDb.Email, userName: userDb.Nombre },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: process.env.JWT_EXPIRE }
+    );
+
+    console.log("✅ Token JWT generado correctamente");
+
+    // ✅ **Configurar la cookie de forma segura**
+    const cookieOptions = {
+      httpOnly: true,  // Impide acceso desde JavaScript del frontend (previene XSS)
+      secure: process.env.NODE_ENV === "production",  // Solo usa HTTPS en producción
+      sameSite: "Strict",  // Previene ataques CSRF
+      expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000),
+      path: "/"
+    };
+
+    // ✅ **Almacenar el token en la cookie**
+    res.cookie("jwt", token, cookieOptions);
+
+    console.log("✅ Cookie de sesión almacenada correctamente");
+
+    // ✅ **Responder con los datos del usuario**
+    return res.status(201).json({
+      status: "logeado",
+      message: `Usuario ${userDb.Email} ha iniciado sesión exitosamente`,
+      user: {
+        email: userDb.Email,
+        name: userDb.Nombre
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error en el login:", error);
+    return res.status(500).json({ status: "Error", message: "Error interno del servidor" });
   }
 }
 
