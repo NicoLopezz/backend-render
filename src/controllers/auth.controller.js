@@ -1,69 +1,92 @@
 
 import Usuario from '../models/Users.js'
 import bcrypt from 'bcryptjs'
-import {sendEmailVeirifcation} from '../helpers/mailer.js'
+import {sendWelcomeEmailNuevoEstilo,sendWelcomeEmailNuevoEstiloEN} from '../helpers/mailer.js'
 import jsonwebtoken from 'jsonwebtoken'
 import {config} from 'dotenv'
 
 config();
 
-async function register(req,res){
+async function register(req, res) {
   const errors = [];
   const newUsuario = new Usuario({
     Identificator: 0,
     Estado_Financiero: {
-      saldoInicial: 10
+      saldoInicial: 10,
     },
-    Name: req.body.Name , 
-    Surname: req.body.Surname, 
+    Name: req.body.Name,
+    Surname: req.body.Surname,
     Email: req.body.Email,
     Pass: req.body.Pass,
     Verify: false,
-    Movimientos:[],
-  })
-  
-  const passHashusser = await bcrypt.hash(newUsuario.Pass , 10 )
-  const emailUser = await Usuario.findOne({Email: newUsuario.Email})
- 
-    // if (newUsuario.Pass.length < 4 ) {
-    //   console.log("al menos 4 letras en al contraseña")
-    //   return errors.push({text:'Passwords must be at least 4 characters'})
-    // }
+    Movimientos: [],
+  });
 
-    if(!newUsuario.Name || !newUsuario.Surname || !newUsuario.Pass){
-      return res.status(400).send({status:"Error",message:"Los campos están incompletos"})
-    }
+  const passHashusser = await bcrypt.hash(newUsuario.Pass, 10);
+  const emailUser = await Usuario.findOne({ Email: newUsuario.Email });
 
-    if (emailUser){
-      console.log(newUsuario.Email)
-      return res.status(400).send({status:"Error",message:"Email ya registrado"})
-    }
+  if (!newUsuario.Name || !newUsuario.Surname || !newUsuario.Pass) {
+    return res
+      .status(400)
+      .send({ status: "Error", message: "Los campos están incompletos" });
+  }
 
-    //create JWT
-    const token = jsonwebtoken.sign(
-      {userMail:newUsuario.Email}, process.env.JWT_SECRET_KEY, {expiresIn:process.env.JWT_EXPIRE})
+  if (emailUser) {
+    console.log(newUsuario.Email);
+    return res
+      .status(400)
+      .send({ status: "Error", message: "Email ya registrado" });
+  }
 
-    //create cookie
+  // create JWT
+  const token = jsonwebtoken.sign(
+    { userMail: newUsuario.Email },
+    process.env.JWT_SECRET_KEY,
+    { expiresIn: process.env.JWT_EXPIRE }
+  );
 
-    const cookieOptions = {
-      expire: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000 ),
-      path: "/"
-    }
+  // create cookie
+  const cookieOptions = {
+    expire:
+      new Date(
+        Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000
+      ),
+    path: "/",
+  };
 
-    res.cookie("jwt",token,cookieOptions)
+  res.cookie("jwt", token, cookieOptions);
 
-      //mail check send
-      const mail = await sendEmailVeirifcation(newUsuario.Email, token)
-  
-     if(mail.accepted===0){
-      return res(500).send({status:"error" , message: "error email to send verification"})
-     }
+  // Detectar idioma por ruta
+  let lang = "es";
+  if (req.originalUrl?.startsWith("/en/") || req.url?.startsWith("/en/")) {
+    lang = "en";
+  }
 
-      newUsuario.Pass = passHashusser;
-      newUsuario.save();
-      console.log(newUsuario)
-      return res.status(201).json({ status: "Success", message: "Usuario registrado correctamente", redirect: "/api/login" })
+  // Enviar mail en idioma correcto
+  let mail;
+  if (lang === "en") {
+    mail = await sendWelcomeEmailNuevoEstiloEN(newUsuario.Email);
+  } else {
+    mail = await sendWelcomeEmailNuevoEstilo(newUsuario.Email);
+  }
+
+  if (!mail || mail.accepted === 0) {
+    return res
+      .status(500)
+      .send({ status: "error", message: "error email to send verification" });
+  }
+
+  newUsuario.Pass = passHashusser;
+  await newUsuario.save();
+  console.log(newUsuario);
+
+  return res.status(201).json({
+    status: "Success",
+    message: "Usuario registrado correctamente",
+    redirect: "/api/login",
+  });
 }
+
 
 // async function login (req ,res){
 //   const newUsuario = new Usuario({
