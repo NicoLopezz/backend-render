@@ -124,7 +124,11 @@ Cancelar suscripción
 }
 
 function mailBienvenidaNuevoEstilo(email, token) {
-  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/es/verify-success?token=${token}`;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const baseUrl = isProduction 
+    ? 'https://www.oxygentoken.org' 
+    : 'http://localhost:3000';
+  const verificationUrl = `${baseUrl}/es/verify-success?token=${token}`;
   
   return `
   <html>
@@ -205,7 +209,11 @@ Cancelar suscripción
 }
 
 function mailBienvenidaNuevoEstiloEN(email, token) {
-  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/en/verify-success?token=${token}`;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const baseUrl = isProduction 
+    ? 'https://www.oxygentoken.org' 
+    : 'http://localhost:3000';
+  const verificationUrl = `${baseUrl}/en/verify-success?token=${token}`;
   
   return `
   <html>
