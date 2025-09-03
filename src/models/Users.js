@@ -1,32 +1,78 @@
 import {Schema , model} from "mongoose"
 
 const User = new Schema({
-    Name: {
+    fullName: {
         type: String,
         required: true,
-        trim: true, //Delete spaces
+        trim: true,
+    },
+    email: {
+        type: String,
+        trim: true,
+        unique: true,
+        required: true,
+    },
+    password: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    country: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    companyName: {
+        type: String,
+        required: false,
+        trim: true,
+    },
+    affiliateCode: {
+        type: String,
+        required: false,
+        trim: true,
+        validate: {
+            validator: function(v) {
+                if (!v) return true;
+                return /^\d{3}[a-zA-Z]{3}$/.test(v);
+            },
+            message: 'Invalid affiliate code format'
+        }
+    },
+    usedAffiliateCode: {
+        type: Schema.Types.ObjectId,
+        ref: 'lumenAffiliateCodes',
+        default: null
+    },
+    bonusOMsReceived: {
+        type: Number,
+        default: 0
+    },
+    affiliateCodeUsedAt: {
+        type: Date,
+        default: null
+    },
+    Name: {
+        type: String,
+        trim: true,
     },
     Surname: {
         type: String,
         trim: true,
     },
-
     Email: {
         type: String,
         trim: true,
-        unique: false, //Unique mails
+        unique: false,
     },
-
     Pass: {
         type: String,
         trim: true,
     },
-
     Verify: {
         type: Boolean,
         trim: true,
     },
-
     Movimientos: [
         {
           tipo: { type: String },
@@ -34,16 +80,33 @@ const User = new Schema({
           fecha: { type: Date }
         }
       ],
-
-      Estado_Financiero: {
+    Estado_Financiero: {
         saldoInicial: { type: Number, default: 0 }
-      },
-
-
-
+    },
+    welcomeModalShown: {
+        type: Boolean,
+        default: false
+    },
+    lastLoginAt: {
+        type: Date,
+        default: null
+    },
+    loginCount: {
+        type: Number,
+        default: 0
+    },
+    profileCompleted: {
+        type: Boolean,
+        default: false
+    },
+    onboardingStep: {
+        type: String,
+        enum: ['pending', 'email_verified', 'affiliate_processed', 'profile_completed', 'welcome_shown'],
+        default: 'pending'
+    }
 }, {
-    timestamps: true,  // when user is created
-    versionKey: false , // esto es para evitar los __v de mongoose / nodemon
+    timestamps: true,
+    versionKey: false,
 });
 
 export default model('users',User)

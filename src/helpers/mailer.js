@@ -4,8 +4,8 @@ config();
 
 const transporter = nodemailer.createTransport({
   host: "smtp.zoho.com",
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.EMAIL,
     pass: process.env.EMAIL_PASSWORD,
@@ -15,34 +15,49 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function sendEmailVeirifcation(direccion, token) {
-  return transporter.sendMail({
-    from: `Oxygen Group <${process.env.EMAIL}>`,
-    to: direccion,
-    subject: "Bienvenido! OXYGEN",
-    html: mailVerificator(token),
-    text: mailVerificatorText(token),
-  });
+  try {
+    return await transporter.sendMail({
+      from: `Oxygen Group <${process.env.EMAIL}>`,
+      to: direccion,
+      subject: "Bienvenido! OXYGEN",
+      html: mailVerificator(token),
+      text: mailVerificatorText(token),
+    });
+  } catch (error) {
+    console.error('Email sending failed:', error.message);
+    return { success: false, error: error.message };
+  }
 }
 
-export async function sendWelcomeEmailNuevoEstilo(direccion, nombre) {
-  return transporter.sendMail({
-    from: `Oxygen Group <${process.env.EMAIL}>`,
-    to: direccion,
-    subject: "🎉 ¡Bienvenido(a) a Oxygen!",
-    html: mailBienvenidaNuevoEstilo(nombre),
-    text: mailBienvenidaNuevoEstiloText(nombre),
-  });
+export async function sendWelcomeEmailNuevoEstilo(direccion, token) {
+  try {
+    return await transporter.sendMail({
+      from: `Oxygen Group <${process.env.EMAIL}>`,
+      to: direccion,
+      subject: "🎉 ¡Bienvenido(a) a Oxygen! - Verifica tu email",
+      html: mailBienvenidaNuevoEstilo(direccion, token),
+      text: mailBienvenidaNuevoEstiloText(direccion, token),
+    });
+  } catch (error) {
+    console.error('Email sending failed:', error.message);
+    return { success: false, error: error.message };
+  }
 }
 
 // VERSIÓN EN INGLÉS
-export async function sendWelcomeEmailNuevoEstiloEN(direccion, nombre) {
-  return transporter.sendMail({
-    from: `Oxygen Group <${process.env.EMAIL}>`,
-    to: direccion,
-    subject: "🎉 Welcome to Oxygen!",
-    html: mailBienvenidaNuevoEstiloEN(nombre),
-    text: mailBienvenidaNuevoEstiloTextEN(nombre),
-  });
+export async function sendWelcomeEmailNuevoEstiloEN(direccion, token) {
+  try {
+    return await transporter.sendMail({
+      from: `Oxygen Group <${process.env.EMAIL}>`,
+      to: direccion,
+      subject: "🎉 Welcome to Oxygen! - Verify your email",
+      html: mailBienvenidaNuevoEstiloEN(direccion, token),
+      text: mailBienvenidaNuevoEstiloTextEN(direccion, token),
+    });
+  } catch (error) {
+    console.error('Email sending failed:', error.message);
+    return { success: false, error: error.message };
+  }
 }
 
 // --- FUNCIONES HTML/PLAIN TEXT ---
@@ -108,31 +123,48 @@ Cancelar suscripción
 `;
 }
 
-function mailBienvenidaNuevoEstilo(first_name) {
+function mailBienvenidaNuevoEstilo(email, token) {
+  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/es/verify-success?token=${token}`;
+  
   return `
   <html>
   <body style="font-family: Arial, sans-serif; background-color: #f8fbfa; color: #2d3748; margin:0;padding:0;">
     <div style="max-width:600px; margin:40px auto; background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(0,77,64,0.08); overflow:hidden;">
-      <div style="background:linear-gradient(135deg,#004d40 0%,#1ABC9C 100%); color:#fff; text-align:center; padding:16px 0;">
-        <strong>INVERSIÓN EN LA NATURALEZA, GANANCIA PARA EL FUTURO</strong>
+      <div style="background:linear-gradient(135deg,#004d40 0%,#1ABC9C 100%); color:#fff; text-align:center; padding:30px 0;">
+        <h1 style="margin:0; font-size:28px; font-weight:600;">OXYGEN</h1>
       </div>
-      <img src="https://i.postimg.cc/y8N92bzS/forest.jpg" alt="Gran Chaco" style="width:100%; display:block;">
-      <div style="padding:30px;">
-        <h1 style="color:#004d40; font-size:28px; margin:0 0 20px; text-align:center; line-height:1.3;">Bienvenido a la <span style="color:#1ABC9C;">comunidad Oxygen</span> 🌱</h1>
-        <p style="font-size:16px;">Gracias por unirte a nuestra lista de espera. Ahora sos parte de una red global decidida a conservar el Gran Chaco y a demostrar que <b>invertir en la naturaleza puede ser rentable y transparente</b>.</p>
-        <ul style="padding-left:18px;">
-          <li><b>¿Cómo podés participar?</b></li>
-          <li>1. Descubrí nuestro proyecto de conservación: LA FLORENCIA.</li>
-          <li>2. Elegí cuántos m² querés proteger.</li>
-          <li>3. Recibí tokens $OM y empezá a generar créditos de carbono.</li>
-        </ul>
-        <p style="font-size:14px;font-style:italic;">Si trabajás en marketing, finanzas verdes, diseño o tech: el planeta te necesita. Hablemos.</p>
-        <div style="text-align:center; margin:40px 0;">
-          <a href="https://www.oxygentoken.org/roles" style="background:linear-gradient(135deg,#1ABC9C 0%,#0e9c8a 100%);color:#fff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;font-size:16px;">Descubrí tu rol</a>
+      
+      <div style="padding:40px 30px; text-align:center;">
+        <h2 style="color:#004d40; font-size:28px; margin:0 0 20px; line-height:1.3;">
+          ¡Bienvenid@!
+        </h2>
+        
+        <p style="font-size:16px; color:#666; margin-bottom:30px; line-height:1.6;">
+          Gracias por registrarte en nuestra plataforma. Para completar tu registro y acceder a todas las funcionalidades, necesitamos verificar tu dirección de email.
+        </p>
+        
+
+        
+        <div style="margin:40px 0;">
+          <a href="${verificationUrl}" style="background:linear-gradient(135deg,#1ABC9C 0%,#0e9c8a 100%);color:#fff;padding:18px 40px;text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;font-size:16px;box-shadow:0 4px 15px rgba(26,188,156,0.3);">
+            Verificar mi email
+          </a>
         </div>
-        <p style="font-size:12px; text-align:center;">Español / English</p>
-        <p style="font-style:italic; margin-top:20px;">Con gratitud,<br>El equipo Oxygen</p>
+        
+
+        
+        <hr style="border:0;border-top:1px solid #e2e8f0; margin:40px 0;">
+        
+        <p style="font-size:14px; color:#666; margin-bottom:20px;">
+          ¿Tienes preguntas? Contáctanos en 
+          <a href="mailto:support@oxygentoken.org" style="color:#1ABC9C;">support@oxygentoken.org</a>
+        </p>
+        
+        <p style="font-style:italic; color:#999; margin:0;">
+          Con gratitud,<br>El equipo Oxygen
+        </p>
       </div>
+      
       <div style="background:#004d40; color:#fff; text-align:center; font-size:14px; padding:20px 0;">
         <div style="margin-bottom:10px;">
           <a href="https://www.linkedin.com/company/oxygentoken/" style="margin:0 8px;"><img src="https://cdn-icons-png.flaticon.com/512/3536/3536505.png" alt="LinkedIn" width="24"></a>
@@ -140,8 +172,7 @@ function mailBienvenidaNuevoEstilo(first_name) {
           <a href="https://instagram.com/oxygentoken" style="margin:0 8px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="24"></a>
         </div>
         Oxygen Token · Innovación al servicio del planeta<br>
-        © 2023 Todos los derechos reservados<br>
-        <a href="#" style="color:rgba(255,255,255,0.7);text-decoration:underline;font-size:12px;display:block;margin-top:15px;">Cancelar suscripción</a>
+        © 2023 Todos los derechos reservados
       </div>
     </div>
   </body>
@@ -173,31 +204,48 @@ Cancelar suscripción
 `;
 }
 
-function mailBienvenidaNuevoEstiloEN(first_name) {
+function mailBienvenidaNuevoEstiloEN(email, token) {
+  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/en/verify-success?token=${token}`;
+  
   return `
   <html>
   <body style="font-family: Arial, sans-serif; background-color: #f8fbfa; color: #2d3748; margin:0;padding:0;">
     <div style="max-width:600px; margin:40px auto; background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(0,77,64,0.08); overflow:hidden;">
-      <div style="background:linear-gradient(135deg,#004d40 0%,#1ABC9C 100%); color:#fff; text-align:center; padding:16px 0;">
-        <strong>INVEST IN NATURE, EARN THE FUTURE</strong>
+      <div style="background:linear-gradient(135deg,#004d40 0%,#1ABC9C 100%); color:#fff; text-align:center; padding:30px 0;">
+        <h1 style="margin:0; font-size:28px; font-weight:600;">OXYGEN</h1>
       </div>
-      <img src="https://i.postimg.cc/y8N92bzS/forest.jpg" alt="Gran Chaco" style="width:100%; display:block;">
-      <div style="padding:30px;">
-        <h1 style="color:#004d40; font-size:28px; margin:0 0 20px; text-align:center; line-height:1.3;">Welcome to the <span style="color:#1ABC9C;">Oxygen community</span> 🌱</h1>
-        <p style="font-size:16px;">Thank you for joining our waitlist. Now you are part of a global network determined to conserve the Gran Chaco and show that <b>investing in nature can be profitable and transparent</b>.</p>
-        <ul style="padding-left:18px;">
-          <li><b>How can you participate?</b></li>
-          <li>1. Discover our conservation project: LA FLORENCIA.</li>
-          <li>2. Choose how many m² you want to protect.</li>
-          <li>3. Receive $OM tokens and start generating carbon credits.</li>
-        </ul>
-        <p style="font-size:14px;font-style:italic;">If you work in marketing, green finance, design or tech: the planet needs you. Let's talk.</p>
-        <div style="text-align:center; margin:40px 0;">
-          <a href="https://www.oxygentoken.org/roles" style="background:linear-gradient(135deg,#1ABC9C 0%,#0e9c8a 100%);color:#fff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;font-size:16px;">Discover your role</a>
+      
+      <div style="padding:40px 30px; text-align:center;">
+        <h2 style="color:#004d40; font-size:28px; margin:0 0 20px; line-height:1.3;">
+          Welcome!
+        </h2>
+        
+        <p style="font-size:16px; color:#666; margin-bottom:30px; line-height:1.6;">
+          Thank you for registering on our platform. To complete your registration and access all features, we need to verify your email address.
+        </p>
+        
+
+        
+        <div style="margin:40px 0;">
+          <a href="${verificationUrl}" style="background:linear-gradient(135deg,#1ABC9C 0%,#0e9c8a 100%);color:#fff;padding:18px 40px;text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;font-size:16px;box-shadow:0 4px 15px rgba(26,188,156,0.3);">
+            Verify my email
+          </a>
         </div>
-        <p style="font-size:12px; text-align:center;">Español / English</p>
-        <p style="font-style:italic; margin-top:20px;">With gratitude,<br>The Oxygen Team</p>
+        
+
+        
+        <hr style="border:0;border-top:1px solid #e2e8f0; margin:40px 0;">
+        
+        <p style="font-size:14px; color:#666; margin-bottom:20px;">
+          Have questions? Contact us at 
+          <a href="mailto:support@oxygentoken.org" style="color:#1ABC9C;">support@oxygentoken.org</a>
+        </p>
+        
+        <p style="font-style:italic; color:#999; margin:0;">
+          With gratitude,<br>The Oxygen Team
+        </p>
       </div>
+      
       <div style="background:#004d40; color:#fff; text-align:center; font-size:14px; padding:20px 0;">
         <div style="margin-bottom:10px;">
           <a href="https://www.linkedin.com/company/oxygentoken/" style="margin:0 8px;"><img src="https://cdn-icons-png.flaticon.com/512/3536/3536505.png" alt="LinkedIn" width="24"></a>
@@ -205,8 +253,7 @@ function mailBienvenidaNuevoEstiloEN(first_name) {
           <a href="https://instagram.com/oxygentoken" style="margin:0 8px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="24"></a>
         </div>
         Oxygen Token · Innovation for the planet<br>
-        © 2023 All rights reserved<br>
-        <a href="#" style="color:rgba(255,255,255,0.7);text-decoration:underline;font-size:12px;display:block;margin-top:15px;">Unsubscribe</a>
+        © 2023 All rights reserved
       </div>
     </div>
   </body>
