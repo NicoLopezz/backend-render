@@ -847,11 +847,11 @@ async function updateOnboardingStep(req, res) {
       });
     }
 
-    const validSteps = ['pending', 'email_verified', 'affiliate_processed', 'profile_completed', 'welcome_shown'];
+    const validSteps = ['skipped', 'paso_1', 'paso_2', 'paso_3', 'paso_4'];
     if (!validSteps.includes(onboardingStep)) {
       return res.status(400).json({ 
         success: false, 
-        message: "Invalid onboarding step" 
+        message: "Invalid onboarding step. Valid steps: skipped, paso_1, paso_2, paso_3, paso_4" 
       });
     }
 

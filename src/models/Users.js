@@ -101,7 +101,7 @@ const User = new Schema({
     },
     onboardingStep: {
         type: String,
-        enum: ['pending', 'email_verified', 'affiliate_processed', 'profile_completed', 'welcome_shown'],
+        enum: ['pending', 'email_verified', 'affiliate_processed', 'profile_completed', 'welcome_shown', 'skipped', 'paso_1', 'paso_2', 'paso_3', 'paso_4'],
         default: 'pending'
     }
 }, {
