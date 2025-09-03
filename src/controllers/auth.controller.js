@@ -783,17 +783,16 @@ async function verifyAffiliateCode(req, res) {
 
 async function updateWelcomeModal(req, res) {
   try {
-    const token = req.cookies.jwt;
+    const { email } = req.body;
     
-    if (!token) {
-      return res.status(401).json({ 
+    if (!email) {
+      return res.status(400).json({ 
         success: false, 
-        message: "No authentication token" 
+        message: "Email is required" 
       });
     }
 
-    const decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET_KEY);
-    const usuario = await Usuario.findOne({ email: decoded.userMail });
+    const usuario = await Usuario.findOne({ email });
 
     if (!usuario) {
       return res.status(404).json({ 
@@ -830,13 +829,12 @@ async function updateWelcomeModal(req, res) {
 
 async function updateOnboardingStep(req, res) {
   try {
-    const token = req.cookies.jwt;
-    const { onboardingStep } = req.body;
+    const { email, onboardingStep } = req.body;
     
-    if (!token) {
-      return res.status(401).json({ 
+    if (!email) {
+      return res.status(400).json({ 
         success: false, 
-        message: "No authentication token" 
+        message: "Email is required" 
       });
     }
 
@@ -855,8 +853,7 @@ async function updateOnboardingStep(req, res) {
       });
     }
 
-    const decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET_KEY);
-    const usuario = await Usuario.findOne({ email: decoded.userMail });
+    const usuario = await Usuario.findOne({ email });
 
     if (!usuario) {
       return res.status(404).json({ 
