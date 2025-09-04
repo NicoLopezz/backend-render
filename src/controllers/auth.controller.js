@@ -374,6 +374,8 @@ async function verifyCount(req,res){
           userDb.affiliateCodeUsedAt = new Date();
           userDb.onboardingStep = 'affiliate_processed';
           console.log("✅ User balance updated with affiliate bonus:", userDb.bonusOMsReceived);
+        
+        // Google Sheet update moved to verifyWithQuery only
         }
       }
   
@@ -404,6 +406,13 @@ async function verifyCount(req,res){
 async function verifyWithQuery(req, res) {
   try {
     console.log("🔍 Email verification with query parameter started");
+    console.log("🌐 Request details:", {
+      method: req.method,
+      url: req.url,
+      userAgent: req.get('User-Agent'),
+      referer: req.get('Referer'),
+      ip: req.ip
+    });
     
     const { token } = req.query;
     
@@ -458,6 +467,42 @@ async function verifyWithQuery(req, res) {
         await affiliateCodeDoc.save();
         console.log("✅ Affiliate code marked as used:", userDb.affiliateCode);
         
+        // Verificar si es la primera vez que se usa el código de afiliado
+        const wasAffiliateCodeAlreadyUsed = userDb.affiliateCodeUsedAt !== null;
+        
+        // Actualizar Google Sheet solo si es la primera vez que se usa el código
+        if (!wasAffiliateCodeAlreadyUsed) {
+          console.log('🔄 First time using affiliate code - updating Google Sheet');
+          console.log('📊 Verification details:', {
+            wasAffiliateCodeAlreadyUsed,
+            currentVerifyStatus: userDb.Verify,
+            affiliateCodeUsedAt: userDb.affiliateCodeUsedAt
+          });
+          
+          try {
+            const googleSheetsUrl = process.env.NODE_ENV === 'production'              ? 'https://www.oxygentoken.org/api/update-affiliate-code'              : 'http://localhost:3000/api/update-affiliate-code';            const response = await fetch(googleSheetsUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                affiliateCode: userDb.affiliateCode,
+                email: userDb.email
+              })
+            });
+            
+            if (response.ok) {
+              console.log('✅ Google Sheet updated successfully');
+            } else {
+              console.error('❌ Google Sheet update failed:', response.status);
+            }
+          } catch (error) {
+            console.error('❌ Error updating Google Sheet:', error);
+          }
+        } else {
+          console.log('⚠️ Affiliate code already used - skipping Google Sheet update');
+        }
+        
         // Actualiza el saldo del usuario
         userDb.Estado_Financiero.saldoInicial = userDb.bonusOMsReceived;
         userDb.affiliateCodeUsedAt = new Date();
@@ -472,14 +517,18 @@ async function verifyWithQuery(req, res) {
     console.log("✅ User verified successfully:", userDb.email);
     
     // Retorna éxito para que el frontend maneje la redirección
-    return res.status(200).json({
+    const responseData = {
       success: true,
-      message: "Email verified successfully",
-      user: {
-        email: userDb.email,
-        fullName: userDb.fullName
-      }
-    });
+      email: userDb.email,
+      fullName: userDb.fullName
+    };
+    
+    // Incluir código de afiliado si se usó uno
+    if (userDb.affiliateCode) {
+      responseData.affiliateCode = userDb.affiliateCode;
+    }
+    
+    return res.status(200).json(responseData);
     
   } catch (error) {
     console.error("❌ Verification error:", error.message);
@@ -508,6 +557,13 @@ async function verifyWithQuery(req, res) {
 async function verifyEmailPost(req, res) {
   try {
     console.log("🔍 Email verification process started (POST)");
+    console.log("🌐 POST Request details:", {
+      method: req.method,
+      url: req.url,
+      userAgent: req.get('User-Agent'),
+      referer: req.get('Referer'),
+      ip: req.ip
+    });
     
     const { token } = req.body;
     
@@ -566,6 +622,8 @@ async function verifyEmailPost(req, res) {
         userDb.Estado_Financiero.saldoInicial = userDb.bonusOMsReceived;
         userDb.affiliateCodeUsedAt = new Date();
         console.log("✅ User balance updated with affiliate bonus:", userDb.bonusOMsReceived);
+        
+        // Google Sheet update moved to verifyWithQuery only
       }
     }
 
@@ -576,14 +634,18 @@ async function verifyEmailPost(req, res) {
     console.log("✅ User verified successfully:", userDb.email);
     
     // Retorna éxito para que el frontend maneje la redirección
-    return res.status(200).json({
+    const responseData = {
       success: true,
-      message: "Email verified successfully",
-      user: {
-        email: userDb.email,
-        fullName: userDb.fullName
-      }
-    });
+      email: userDb.email,
+      fullName: userDb.fullName
+    };
+    
+    // Incluir código de afiliado si se usó uno
+    if (userDb.affiliateCode) {
+      responseData.affiliateCode = userDb.affiliateCode;
+    }
+    
+    return res.status(200).json(responseData);
     
   } catch (error) {
     console.error("❌ Verification error:", error.message);
@@ -981,6 +1043,36 @@ async function logout(req, res) {
   }
 }
 
+async function getAllAffiliateCodes(req, res) {
+  try {
+    console.log("🔍 Fetching all affiliate codes...");
+    
+    const affiliateCodes = await LumenAffiliateCode.find({})
+      .select('-__v')
+      .sort({ createdAt: -1 });
+    
+    console.log(`✅ Found ${affiliateCodes.length} affiliate codes`);
+    
+    const responseData = {
+      success: true,
+      message: "Affiliate codes retrieved successfully",
+      data: {
+        total: affiliateCodes.length,
+        codes: affiliateCodes
+      }
+    };
+    
+    return res.status(200).json(responseData);
+    
+  } catch (error) {
+    console.error("❌ Error fetching affiliate codes:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+}
+
 export const methods = {
     register,
     login,
@@ -988,6 +1080,7 @@ export const methods = {
     verifyWithQuery,
     verifyEmailPost,
     allUsers,
+    getAllAffiliateCodes,
     verifyToken,
     dashboard,
     checkSession,

@@ -38,6 +38,7 @@ router.get("/verify/:token" , autenthication.verifyCount)
 router.get("/verify" , autenthication.verifyWithQuery)
 
 router.get("/allUsers" , autenthication.allUsers)
+router.get("/allAffiliateCodes" , autenthication.getAllAffiliateCodes)
 
 router.get("/register", (req, res) => {
     res.sendFile(path.join(__dirname,"../../public/index.html"));
