@@ -480,7 +480,7 @@ async function verifyWithQuery(req, res) {
           });
           
           try {
-            const googleSheetsUrl = process.env.NODE_ENV === 'production'              ? 'https://www.oxygentoken.org/api/update-affiliate-code'              : 'http://localhost:3000/api/update-affiliate-code';            const response = await fetch(googleSheetsUrl, {
+            const googleSheetsUrl = process.env.NODE_ENV === 'production'               ? 'https://www.oxygentoken.org/api/google-sheets'             : 'http://localhost:3000/api/google-sheets';            const response = await fetch(googleSheetsUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
