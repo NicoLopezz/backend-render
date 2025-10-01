@@ -125,7 +125,7 @@ async function register(req, res) {
         mail = await sendWelcomeEmailNuevoEstilo(newUsuario.email, verificationToken);
   }
 
-  if (!mail || mail.accepted === 0) {
+  if (!mail || mail.success === false || mail.accepted === 0) {
         console.log("⚠️ Email sending failed, but user will still be registered");
       } else {
         console.log("✅ Verification email sent successfully");

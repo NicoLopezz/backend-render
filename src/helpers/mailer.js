@@ -10,6 +10,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL,
     pass: process.env.EMAIL_PASSWORD,
   },
+  connectionTimeout: 10000, // 10 segundos para conectar
+  greetingTimeout: 5000,    // 5 segundos para saludo
+  socketTimeout: 10000,     // 10 segundos para socket
   logger: true,
   debug: true,
 });
@@ -31,15 +34,24 @@ export async function sendEmailVeirifcation(direccion, token) {
 
 export async function sendWelcomeEmailNuevoEstilo(direccion, token) {
   try {
-    return await transporter.sendMail({
+    const result = await transporter.sendMail({
       from: `Oxygen Group <${process.env.EMAIL}>`,
       to: direccion,
       subject: "🎉 ¡Bienvenido(a) a Oxygen! - Verifica tu email",
       html: mailBienvenidaNuevoEstilo(direccion, token),
       text: mailBienvenidaNuevoEstiloText(direccion, token),
     });
+    
+    // Verificar si el email se envió correctamente
+    if (!result || !result.messageId) {
+      console.error('Email sending failed: No messageId returned');
+      return { success: false, error: 'No messageId returned' };
+    }
+    
+    console.log('✅ Email sent successfully with messageId:', result.messageId);
+    return { success: true, messageId: result.messageId, accepted: result.accepted };
   } catch (error) {
-    console.error('Email sending failed:', error.message);
+    console.error('❌ Email sending failed:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -47,15 +59,24 @@ export async function sendWelcomeEmailNuevoEstilo(direccion, token) {
 // VERSIÓN EN INGLÉS
 export async function sendWelcomeEmailNuevoEstiloEN(direccion, token) {
   try {
-    return await transporter.sendMail({
+    const result = await transporter.sendMail({
       from: `Oxygen Group <${process.env.EMAIL}>`,
       to: direccion,
       subject: "🎉 Welcome to Oxygen! - Verify your email",
       html: mailBienvenidaNuevoEstiloEN(direccion, token),
       text: mailBienvenidaNuevoEstiloTextEN(direccion, token),
     });
+    
+    // Verificar si el email se envió correctamente
+    if (!result || !result.messageId) {
+      console.error('Email sending failed: No messageId returned');
+      return { success: false, error: 'No messageId returned' };
+    }
+    
+    console.log('✅ Email sent successfully with messageId:', result.messageId);
+    return { success: true, messageId: result.messageId, accepted: result.accepted };
   } catch (error) {
-    console.error('Email sending failed:', error.message);
+    console.error('❌ Email sending failed:', error.message);
     return { success: false, error: error.message };
   }
 }
