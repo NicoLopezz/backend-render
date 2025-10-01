@@ -2,7 +2,7 @@
 import Usuario from '../models/Users.js'
 import LumenAffiliateCode from '../models/LumenAffiliateCodes.js'
 import bcrypt from 'bcryptjs'
-import {sendWelcomeEmailNuevoEstilo,sendWelcomeEmailNuevoEstiloEN} from '../helpers/mailer.js'
+import {sendWelcomeEmailNuevoEstilo,sendWelcomeEmailNuevoEstiloEN} from '../helpers/mailer-resend.js'
 import jsonwebtoken from 'jsonwebtoken'
 import {config} from 'dotenv'
 
