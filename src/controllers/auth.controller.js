@@ -1,6 +1,7 @@
 
 import Usuario from '../models/Users.js'
 import LumenAffiliateCode from '../models/LumenAffiliateCodes.js'
+import AffiliateCode from '../models/AffiliateCodes.js'
 import bcrypt from 'bcryptjs'
 import {sendWelcomeEmailNuevoEstilo,sendWelcomeEmailNuevoEstiloEN} from '../helpers/mailer-resend.js'
 import jsonwebtoken from 'jsonwebtoken'
@@ -36,9 +37,24 @@ async function register(req, res) {
     let usedAffiliateCode = null;
     let bonusOMsReceived = 0;
     let affiliateCodeUsedAt = null;
+    let affiliateCodeDoc = null;
+    let affiliateCodeType = null;
 
     if (affiliateCode) {
-      const affiliateCodeDoc = await LumenAffiliateCode.findByCode(affiliateCode);
+      console.log("🔍 Searching affiliate code in both tables:", affiliateCode);
+      
+      affiliateCodeDoc = await LumenAffiliateCode.findByCode(affiliateCode);
+      
+      if (affiliateCodeDoc) {
+        affiliateCodeType = "code_lumen";
+        console.log("✅ Found in LumenAffiliateCodes table");
+      } else {
+        affiliateCodeDoc = await AffiliateCode.findOne({ code: affiliateCode });
+        if (affiliateCodeDoc) {
+          affiliateCodeType = "code_standard";
+          console.log("✅ Found in AffiliateCodes table");
+        }
+      }
 
       if (!affiliateCodeDoc) {
         return res.status(400).json({
@@ -63,7 +79,17 @@ async function register(req, res) {
 
       usedAffiliateCode = affiliateCodeDoc._id;
       bonusOMsReceived = affiliateCodeDoc.bonusOMs;
-      console.log("✅ Affiliate code validated for registration:", affiliateCode);
+      
+      affiliateCodeDoc.isUsed = true;
+      affiliateCodeDoc.usedAt = new Date();
+      affiliateCodeDoc.usedEmail = email;
+      affiliateCodeDoc.usageDetails = {
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        country: country
+      };
+      
+      console.log(`✅ Affiliate code prepared for marking as used (${affiliateCodeType}):`, affiliateCode);
     }
 
   const newUsuario = new Usuario({
@@ -138,12 +164,31 @@ async function register(req, res) {
     }
 
   await newUsuario.save();
+  
+  if (affiliateCode && affiliateCodeDoc) {
+    affiliateCodeDoc.usedBy = newUsuario._id;
+    await affiliateCodeDoc.save();
+    console.log("✅ Affiliate code marked as used with user ID:", affiliateCode);
+  }
     console.log("✅ User saved to database:", newUsuario.email);
 
     const responseData = {
       success: true,
-      message: "User registered successfully. Please check your email to verify your account and activate your affiliate code."
+      message: "User registered successfully. Please check your email to verify your account and activate your affiliate code.",
+      user: {
+        id: newUsuario._id,
+        email: newUsuario.email,
+        fullName: newUsuario.fullName,
+        country: newUsuario.country,
+        affiliateCode: newUsuario.affiliateCode,
+        bonusOMsReceived: newUsuario.bonusOMsReceived
+      }
     };
+
+    if (affiliateCodeType) {
+      responseData.affiliateCodeType = affiliateCodeType;
+      responseData.message += ` Affiliate code type: ${affiliateCodeType}`;
+    }
 
     return res.status(201).json(responseData);
 
@@ -480,24 +525,14 @@ async function verifyWithQuery(req, res) {
           });
           
           try {
-            const googleSheetsUrl = process.env.NODE_ENV === 'production'               ? 'https://www.oxygentoken.org/api/google-sheets'             : 'http://localhost:3000/api/google-sheets';            const response = await fetch(googleSheetsUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                affiliateCode: userDb.affiliateCode,
-                email: userDb.email
-              })
+            console.log('📊 Google Sheets integration temporarily disabled');
+            console.log('📊 Affiliate code data:', {
+              affiliateCode: userDb.affiliateCode,
+              email: userDb.email,
+              bonusOMs: userDb.bonusOMsReceived
             });
-            
-            if (response.ok) {
-              console.log('✅ Google Sheet updated successfully');
-            } else {
-              console.error('❌ Google Sheet update failed:', response.status);
-            }
           } catch (error) {
-            console.error('❌ Error updating Google Sheet:', error);
+            console.error('❌ Error logging affiliate data:', error);
           }
         } else {
           console.log('⚠️ Affiliate code already used - skipping Google Sheet update');
