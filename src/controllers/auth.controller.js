@@ -824,37 +824,51 @@ async function verifyAffiliateCode(req, res) {
     const { code } = req.body;
 
     if (!code) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: "Affiliate code is required"
       });
     }
 
     if (!/^\d{3}[a-zA-Z]{3}$/.test(code)) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: "Invalid affiliate code format"
       });
     }
 
-    const affiliateCode = await LumenAffiliateCode.findByCode(code);
+    console.log("🔍 Verifying affiliate code in both tables:", code);
+    
+    let affiliateCode = await LumenAffiliateCode.findByCode(code);
+    let affiliateCodeType = null;
+    
+    if (affiliateCode) {
+      affiliateCodeType = "code_lumen";
+      console.log("✅ Found in LumenAffiliateCodes table");
+    } else {
+      affiliateCode = await AffiliateCode.findOne({ code });
+      if (affiliateCode) {
+        affiliateCodeType = "code_standard";
+        console.log("✅ Found in AffiliateCodes table");
+      }
+    }
 
     if (!affiliateCode) {
-      return res.status(404).json({
+      return res.status(200).json({
         success: false,
         message: "Affiliate code not found"
       });
     }
 
     if (!affiliateCode.isActive) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: "Affiliate code is inactive"
       });
     }
 
     if (affiliateCode.isUsed) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: "Affiliate code has already been used"
       });
@@ -865,7 +879,8 @@ async function verifyAffiliateCode(req, res) {
       message: "Affiliate code is valid and available",
       data: {
         code: affiliateCode.code,
-        bonusOMs: affiliateCode.bonusOMs
+        bonusOMs: affiliateCode.bonusOMs,
+        affiliateCodeType: affiliateCodeType
       }
     });
 
@@ -880,26 +895,32 @@ async function verifyAffiliateCode(req, res) {
 
 async function updateWelcomeModal(req, res) {
   try {
-    const { email } = req.body;
+    const { email, welcomeModalShown } = req.body;
     
     if (!email) {
-      return res.status(400).json({ 
+      return res.status(200).json({ 
         success: false, 
         message: "Email is required" 
+      });
+    }
+
+    if (welcomeModalShown !== true) {
+      return res.status(200).json({ 
+        success: false, 
+        message: "welcomeModalShown must be true" 
       });
     }
 
     const usuario = await Usuario.findOne({ email });
 
     if (!usuario) {
-      return res.status(404).json({ 
+      return res.status(200).json({ 
         success: false, 
         message: "User not found" 
       });
     }
 
     usuario.welcomeModalShown = true;
-    usuario.onboardingStep = 'welcome_shown';
     await usuario.save();
 
     console.log("✅ Welcome modal marked as shown for user:", usuario.email);
@@ -926,7 +947,7 @@ async function updateWelcomeModal(req, res) {
 
 async function updateOnboardingStep(req, res) {
   try {
-    const { email, onboardingStep } = req.body;
+    const { email, onboardingStep, step } = req.body;
     
     if (!email) {
       return res.status(400).json({ 
@@ -960,9 +981,14 @@ async function updateOnboardingStep(req, res) {
     }
 
     usuario.onboardingStep = onboardingStep;
+    
+    if (step !== undefined && step !== null) {
+      usuario.onboardingCurrentStep = step;
+    }
+    
     await usuario.save();
 
-    console.log("✅ Onboarding step updated for user:", usuario.email, "to:", onboardingStep);
+    console.log("✅ Onboarding step updated for user:", usuario.email, "to:", onboardingStep, "current step:", step);
 
     return res.status(200).json({
       success: true,
@@ -970,7 +996,8 @@ async function updateOnboardingStep(req, res) {
       user: {
         email: usuario.email,
         fullName: usuario.fullName,
-        onboardingStep: usuario.onboardingStep
+        onboardingStep: usuario.onboardingStep,
+        onboardingCurrentStep: usuario.onboardingCurrentStep
       }
     });
 
