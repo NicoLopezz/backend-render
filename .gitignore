@@ -1,2 +1,9 @@
+<<<<<<< HEAD
 .DS_Store
 .vscode/
+=======
+
+#enviroment variables
+.env
+node_modules
+>>>>>>> 7c326e05e82245415d183ca93f536fe751c8b513
