@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Bienvenido al Dashboard</h1>
+        <div class="card mt-3">
+            <div class="card-header">
+                <h2>Información del Usuario</h2>
+            </div>
+            <div class="card-body">
+                <p><strong>Nombre:</strong> <span id="name"></span></p>
+                <p><strong>Apellido:</strong> <span id="surname"></span></p>
+                <p><strong>Email:</strong> <span id="email"></span></p>
+                <p><strong>Saldo Inicial:</strong> <span id="saldoInicial"></span></p>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h2>Movimientos Financieros</h2>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>Monto</th>
+                            <th>Saldo Actualizado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="movimientos">
+                        <!-- Aquí se agregarán las filas de movimientos -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/api/dashboard');
+                const result = await response.json();
+
+                if (result.status === "Success") {
+                    const user = result.data;
+                    document.getElementById('name').textContent = user.Name;
+                    document.getElementById('surname').textContent = user.Surname;
+                    document.getElementById('email').textContent = user.Email;
+                    document.getElementById('saldoInicial').textContent = user.SaldoInicial;
+
+                    const movimientosTable = document.getElementById('movimientos');
+                    let saldoActualizado = user.SaldoInicial;
+
+                    user.Movimientos.forEach(movimiento => {
+                        const row = document.createElement('tr');
+                        const fecha = new Date(movimiento.fecha);
+                        saldoActualizado += movimiento.monto;
+
+                        row.innerHTML = `
+                            <td>${fecha.toLocaleDateString()}</td>
+                            <td>${fecha.toLocaleTimeString()}</td>
+                            <td>${movimiento.monto}</td>
+                            <td>${saldoActualizado}</td>
+                        `;
+                        movimientosTable.appendChild(row);
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            }
+        });
+    </script>
+</body>
+</html>

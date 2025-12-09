@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login de Usuario</title>
+  <link rel="stylesheet" href="\Style\styles.css">
+</head>
+
+<body>
+  <div class="container">
+    <!-- Formulario de inicio de sesión -->
+    <div class="form loginForm">
+      <header>Iniciar Sesión</header>
+      <form id="formularioLogin">
+        <input type="email" placeholder="Correo Electrónico" id="emailL">
+        <input type="password" placeholder="Contraseña" id="passwordL">
+        <div id="error-message" style="color: red; display: none; margin: 10px 0; text-align: center;"></div>
+        <input type="submit" class="button" value="Iniciar Sesión">
+      </form>
+      <div class="signup">
+        <span>¿No tienes una cuenta? 
+          <a href="./register">Regístrate</a>
+        </span>
+      </div>
+    </div>
+  </div>
+  <script src="/login.js"></script>
+</body>
+</html>

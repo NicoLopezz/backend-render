@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Error - Oxygen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #f8fbfa 0%, #e8f5f3 100%);
+        }
+        .container {
+            text-align: center;
+            padding: 3rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,77,64,0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+        .logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 2rem;
+        }
+        .error-icon {
+            color: #e74c3c;
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+        }
+        h1 {
+            color: #004d40;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+        .subtitle {
+            color: #e74c3c;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+        p {
+            color: #666;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+        .btn {
+            background: linear-gradient(135deg, #1ABC9C 0%, #0e9c8a 100%);
+            color: white;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 8px;
+            display: inline-block;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(26,188,156,0.3);
+            transition: transform 0.2s ease;
+            margin: 0 10px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(26,188,156,0.4);
+        }
+        .btn-secondary {
+            background: #95a5a6;
+            box-shadow: 0 4px 15px rgba(149,165,166,0.3);
+        }
+        .btn-secondary:hover {
+            box-shadow: 0 6px 20px rgba(149,165,166,0.4);
+        }
+        .footer {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+            color: #999;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="https://i.postimg.cc/y8N92bzS/forest.jpg" alt="Oxygen Logo" class="logo">
+        <div class="error-icon">❌</div>
+        <h1>Error de Verificación</h1>
+        <div class="subtitle">No se pudo verificar tu email</div>
+        <p>
+            Lo sentimos, pero hubo un problema al verificar tu dirección de email. Esto puede deberse a un enlace inválido o expirado.
+        </p>
+        <div>
+            <a href="/register" class="btn">Registrarse Nuevamente</a>
+            <a href="/login" class="btn btn-secondary">Ir al Login</a>
+        </div>
+        
+        <div class="footer">
+            <p>Oxygen Token · Innovación al servicio del planeta</p>
+        </div>
+    </div>
+</body>
+</html>
+
