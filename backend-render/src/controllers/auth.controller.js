@@ -490,12 +490,21 @@ async function verifyCount(req,res){
 async function verifyWithQuery(req, res) {
   try {
     console.log("🔍 Email verification with query parameter started");
+
+    // Detectar si es una llamada fetch (AJAX) o navegación directa del navegador
+    const acceptHeader = req.get('Accept') || '';
+    const isFetchRequest = acceptHeader.includes('application/json') ||
+                           req.xhr ||
+                           req.get('X-Requested-With') === 'XMLHttpRequest';
+
     console.log("🌐 Request details:", {
       method: req.method,
       url: req.url,
       userAgent: req.get('User-Agent'),
       referer: req.get('Referer'),
-      ip: req.ip
+      ip: req.ip,
+      isFetchRequest: isFetchRequest,
+      acceptHeader: acceptHeader
     });
 
     const { token } = req.query;
@@ -503,6 +512,9 @@ async function verifyWithQuery(req, res) {
 
     if (!token) {
       console.log("❌ No token provided in query");
+      if (isFetchRequest) {
+        return res.status(400).json({ success: false, error: 'no_token', message: 'No token provided' });
+      }
       return res.redirect(`${frontendUrl}/verify-error?error=no_token`);
     }
 
@@ -516,15 +528,24 @@ async function verifyWithQuery(req, res) {
     } catch (jwtError) {
       if (jwtError.name === 'TokenExpiredError') {
         console.log("❌ Token expired");
+        if (isFetchRequest) {
+          return res.status(401).json({ success: false, error: 'expired', message: 'Token expired' });
+        }
         return res.redirect(`${frontendUrl}/verify-error?error=expired`);
       }
       console.log("❌ Invalid token");
+      if (isFetchRequest) {
+        return res.status(400).json({ success: false, error: 'invalid', message: 'Invalid token' });
+      }
       return res.redirect(`${frontendUrl}/verify-error?error=invalid`);
     }
 
     // Verifica si el JWT tiene el campo "userMail"
     if (!decoded.userMail) {
       console.log("❌ Token does not contain userMail");
+      if (isFetchRequest) {
+        return res.status(400).json({ success: false, error: 'invalid', message: 'Invalid token structure' });
+      }
       return res.redirect(`${frontendUrl}/verify-error?error=invalid`);
     }
 
@@ -532,6 +553,9 @@ async function verifyWithQuery(req, res) {
     const userDb = await Usuario.findOne({ email: decoded.userMail });
     if (!userDb) {
       console.log("❌ User not found:", decoded.userMail);
+      if (isFetchRequest) {
+        return res.status(404).json({ success: false, error: 'user_not_found', message: 'User not found' });
+      }
       return res.redirect(`${frontendUrl}/verify-error?error=user_not_found`);
     }
 
@@ -600,8 +624,25 @@ async function verifyWithQuery(req, res) {
     );
     console.log("✅ JWT token generated for auto-login");
 
-    // Redirigir al frontend con el token de sesión en la URL
-    // El frontend usará este token para hacer auto-login
+    // Si es una llamada fetch, devolver JSON con el session_token
+    if (isFetchRequest) {
+      console.log("📤 Returning JSON response for fetch request");
+      return res.status(200).json({
+        success: true,
+        message: 'Email verified successfully',
+        session_token: jwtToken,
+        user: {
+          email: userDb.email,
+          fullName: userDb.fullName,
+          country: userDb.country,
+          companyName: userDb.companyName,
+          affiliateCode: userDb.affiliateCode,
+          bonusOMsReceived: userDb.bonusOMsReceived
+        }
+      });
+    }
+
+    // Si es navegación directa, redirigir al frontend con el token de sesión en la URL
     const redirectUrl = `${frontendUrl}/verify-success?session_token=${jwtToken}`;
     console.log("🔄 Redirecting to frontend:", redirectUrl.substring(0, 80) + "...");
 
@@ -610,6 +651,14 @@ async function verifyWithQuery(req, res) {
   } catch (error) {
     console.error("❌ Verification error:", error.message);
     const frontendUrl = process.env.FRONTEND_URL || 'https://www.oxygentoken.org';
+
+    // Detectar si es fetch request para el error también
+    const acceptHeader = req.get('Accept') || '';
+    const isFetchRequest = acceptHeader.includes('application/json') || req.xhr;
+
+    if (isFetchRequest) {
+      return res.status(500).json({ success: false, error: 'server_error', message: 'Internal server error' });
+    }
     return res.redirect(`${frontendUrl}/verify-error?error=server_error`);
   }
 }
@@ -692,19 +741,28 @@ async function verifyEmailPost(req, res) {
     userDb.Verify = true;
     await userDb.save();
     console.log("✅ User verified successfully:", userDb.email);
-    
+
+    // Generar JWT token para auto-login
+    const jwtToken = jsonwebtoken.sign(
+      { userMail: userDb.email },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: "7d" }
+    );
+    console.log("✅ JWT token generated for auto-login (POST)");
+
     // Retorna éxito para que el frontend maneje la redirección
     const responseData = {
       success: true,
       email: userDb.email,
-      fullName: userDb.fullName
+      fullName: userDb.fullName,
+      session_token: jwtToken
     };
-    
+
     // Incluir código de afiliado si se usó uno
     if (userDb.affiliateCode) {
       responseData.affiliateCode = userDb.affiliateCode;
     }
-    
+
     return res.status(200).json(responseData);
     
   } catch (error) {
