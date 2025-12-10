@@ -8,13 +8,14 @@ const router = Router()
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-router.post("/register" , autenthication.register) 
+router.post("/register" , autenthication.register)
 router.post("/login" , autenthication.login)
-router.post("/verify-affiliate-code" , autenthication.verifyAffiliateCode) 
-router.post("/verify-email" , autenthication.verifyEmailPost) 
-router.post("/update-welcome-modal" , autenthication.updateWelcomeModal) 
-router.post("/update-onboarding-step" , autenthication.updateOnboardingStep) 
-router.post("/update-profile-status" , autenthication.updateProfileStatus) 
+router.post("/verify-affiliate-code" , autenthication.verifyAffiliateCode)
+router.post("/reset-affiliate-code" , autenthication.resetAffiliateCode)
+router.post("/verify-email" , autenthication.verifyEmailPost)
+router.post("/update-welcome-modal" , autenthication.updateWelcomeModal)
+router.post("/update-onboarding-step" , autenthication.updateOnboardingStep)
+router.post("/update-profile-status" , autenthication.updateProfileStatus)
 router.post("/logout" , autenthication.logout)
 
 router.get("/post-register", (req, res) => {

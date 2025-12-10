@@ -1060,11 +1060,11 @@ async function updateProfileStatus(req, res) {
 async function logout(req, res) {
   try {
     const token = req.cookies.jwt;
-    
+
     if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "No authentication token" 
+      return res.status(401).json({
+        success: false,
+        message: "No authentication token"
       });
     }
 
@@ -1072,9 +1072,9 @@ async function logout(req, res) {
     const usuario = await Usuario.findOne({ email: decoded.userMail });
 
     if (!usuario) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
       });
     }
 
@@ -1098,9 +1098,89 @@ async function logout(req, res) {
 
   } catch (error) {
     console.error("❌ Logout error:", error.message);
-    return res.status(500).json({ 
-      success: false, 
-      message: "Internal server error" 
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+}
+
+async function resetAffiliateCode(req, res) {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: "Affiliate code is required"
+      });
+    }
+
+    console.log("🔍 Searching for affiliate code to reset:", code);
+
+    let affiliateCodeDoc = await LumenAffiliateCode.findByCode(code);
+    let affiliateCodeType = null;
+
+    if (affiliateCodeDoc) {
+      affiliateCodeType = "code_lumen";
+      console.log("✅ Found in LumenAffiliateCodes table");
+    } else {
+      affiliateCodeDoc = await AffiliateCode.findOne({ code });
+      if (affiliateCodeDoc) {
+        affiliateCodeType = "code_standard";
+        console.log("✅ Found in AffiliateCodes table");
+      }
+    }
+
+    if (!affiliateCodeDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Affiliate code not found"
+      });
+    }
+
+    // Guardar información del uso previo para logging
+    const previousUsage = {
+      wasUsed: affiliateCodeDoc.isUsed,
+      usedBy: affiliateCodeDoc.usedBy,
+      usedEmail: affiliateCodeDoc.usedEmail,
+      usedAt: affiliateCodeDoc.usedAt
+    };
+
+    // Resetear el código
+    affiliateCodeDoc.isUsed = false;
+    affiliateCodeDoc.usedBy = null;
+    affiliateCodeDoc.usedAt = null;
+    affiliateCodeDoc.usedEmail = null;
+    affiliateCodeDoc.usageDetails = {
+      ipAddress: null,
+      userAgent: null,
+      country: null
+    };
+
+    await affiliateCodeDoc.save();
+
+    console.log("✅ Affiliate code reset successfully:", code);
+    console.log("📋 Previous usage:", previousUsage);
+
+    return res.status(200).json({
+      success: true,
+      message: "Affiliate code reset successfully and is now available for reuse",
+      data: {
+        code: affiliateCodeDoc.code,
+        bonusOMs: affiliateCodeDoc.bonusOMs,
+        isActive: affiliateCodeDoc.isActive,
+        isUsed: affiliateCodeDoc.isUsed,
+        affiliateCodeType: affiliateCodeType,
+        previousUsage: previousUsage
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Reset affiliate code error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
     });
   }
 }
@@ -1147,6 +1227,7 @@ export const methods = {
     dashboard,
     checkSession,
     verifyAffiliateCode,
+    resetAffiliateCode,
     updateWelcomeModal,
     updateOnboardingStep,
     updateProfileStatus,

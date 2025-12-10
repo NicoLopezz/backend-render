@@ -329,124 +329,72 @@ async function login(req, res) {
       });
     }
 
-    console.log("✅ Email verified, checking first login status...");
+    console.log("✅ Email verified, completing login...");
     
     const isFirstLogin = userDb.isFirstLogin === undefined || userDb.isFirstLogin === true;
     
     if (isFirstLogin) {
-      console.log("✅ First login detected, completing login without 2FA...");
-      
       userDb.isFirstLogin = false;
-      userDb.lastLoginAt = new Date();
-      userDb.loginCount = (userDb.loginCount || 0) + 1;
-      await userDb.save();
-      
-      console.log("✅ Login stats updated, generating JWT...");
-      
-      const jwtExpire = normalizeJWTExpire(process.env.JWT_EXPIRE);
-      console.log("🔑 JWT_EXPIRE original:", process.env.JWT_EXPIRE);
-      console.log("🔑 JWT_EXPIRE normalizado:", jwtExpire);
+    }
+    
+    userDb.lastLoginAt = new Date();
+    userDb.loginCount = (userDb.loginCount || 0) + 1;
+    await userDb.save();
+    
+    console.log("✅ Login stats updated, generating JWT...");
+    
+    const jwtExpire = normalizeJWTExpire(process.env.JWT_EXPIRE);
+    console.log("🔑 JWT_EXPIRE original:", process.env.JWT_EXPIRE);
+    console.log("🔑 JWT_EXPIRE normalizado:", jwtExpire);
 
-      const token = jsonwebtoken.sign(
-        { userMail: userDb.email, userName: userDb.fullName },
-        process.env.JWT_SECRET_KEY,
-        { expiresIn: jwtExpire }
-      );
+    const token = jsonwebtoken.sign(
+      { userMail: userDb.email, userName: userDb.fullName },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: jwtExpire }
+    );
 
-      console.log("✅ JWT token generated successfully");
+    console.log("✅ JWT token generated successfully");
 
-      try {
-        const cookieOptions = {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-          maxAge: 24 * 60 * 60 * 1000,
-          path: "/"
-        };
+    try {
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 24 * 60 * 60 * 1000,
+        path: "/"
+      };
 
-        res.cookie("jwt", token, cookieOptions);
-        res.cookie("username", userDb.fullName, cookieOptions);
+      res.cookie("jwt", token, cookieOptions);
+      res.cookie("username", userDb.fullName, cookieOptions);
 
-        console.log("✅ Session cookie stored successfully");
+      console.log("✅ Session cookie stored successfully");
 
-        return res.status(201).json({
-          status: "logged",
-          message: `User ${userDb.email} has logged in successfully`,
-          user: {
-            email: userDb.email,
-            name: userDb.fullName,
-            fullName: userDb.fullName,
-            country: userDb.country,
-            companyName: userDb.companyName,
-            affiliateCode: userDb.affiliateCode,
-            bonusOMsReceived: userDb.bonusOMsReceived,
-            affiliateCodeUsedAt: userDb.affiliateCodeUsedAt,
-            saldoInicial: userDb.Estado_Financiero?.saldoInicial || 0,
-            isFirstLogin: false,
-            welcomeModalShown: userDb.welcomeModalShown || false,
-            onboardingStep: userDb.onboardingStep || 'pending',
-            profileCompleted: userDb.profileCompleted || false,
-            loginCount: userDb.loginCount || 0,
-            lastLoginAt: userDb.lastLoginAt,
-            Movimientos: userDb.Movimientos || [],
-            walletAddress: userDb.wallet_address || null
-          }
-        });
-      } catch (cookieError) {
-        console.error("❌ Cookie error:", cookieError.message);
-        return res.status(500).json({ status: "Error", message: "Cookie setting error" });
-      }
-    } else {
-      console.log("✅ Not first login, generating 2FA code...");
-      
-      const twoFactorCode = generateSecure2FACode();
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 10);
-      
-      userDb.twoFactorCode = twoFactorCode;
-      userDb.twoFactorCodeExpires = expiresAt;
-      await userDb.save();
-      
-      console.log("✅ 2FA code generated and saved");
-      
-      let lang = "es";
-      if (req.originalUrl?.startsWith("/en/") || req.url?.startsWith("/en/")) {
-        lang = "en";
-      }
-      
-      try {
-        let mail;
-        if (lang === "en") {
-          mail = await sendTwoFactorEmailEN(userDb.email, twoFactorCode);
-        } else {
-          mail = await sendTwoFactorEmail(userDb.email, twoFactorCode);
-        }
-
-        if (!mail || mail.success === false) {
-          console.log("⚠️ 2FA email sending failed, but code was generated");
-          return res.status(201).json({
-            status: "2fa_required",
-            message: "2FA code generated but email sending failed. Please try again.",
-            requires2FA: true
-          });
-        } else {
-          console.log("✅ 2FA email sent successfully");
-        }
-      } catch (emailError) {
-        console.log("⚠️ 2FA email sending failed:", emailError.message);
-        return res.status(201).json({
-          status: "2fa_required",
-          message: "2FA code generated but email sending failed. Please try again.",
-          requires2FA: true
-        });
-      }
-      
       return res.status(201).json({
-        status: "2fa_required",
-        message: "2FA code sent to your email. Please verify to complete login.",
-        requires2FA: true,
-        email: userDb.email
+        status: "logged",
+        message: `User ${userDb.email} has logged in successfully`,
+        user: {
+          email: userDb.email,
+          name: userDb.fullName,
+          fullName: userDb.fullName,
+          country: userDb.country,
+          companyName: userDb.companyName,
+          affiliateCode: userDb.affiliateCode,
+          bonusOMsReceived: userDb.bonusOMsReceived,
+          affiliateCodeUsedAt: userDb.affiliateCodeUsedAt,
+          saldoInicial: userDb.Estado_Financiero?.saldoInicial || 0,
+          isFirstLogin: false,
+          welcomeModalShown: userDb.welcomeModalShown || false,
+          onboardingStep: userDb.onboardingStep || 'pending',
+          profileCompleted: userDb.profileCompleted || false,
+          loginCount: userDb.loginCount || 0,
+          lastLoginAt: userDb.lastLoginAt,
+          Movimientos: userDb.Movimientos || [],
+          walletAddress: userDb.wallet_address || null
+        }
       });
+    } catch (cookieError) {
+      console.error("❌ Cookie error:", cookieError.message);
+      return res.status(500).json({ status: "Error", message: "Cookie setting error" });
     }
 
   } catch (error) {
