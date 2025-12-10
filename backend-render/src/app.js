@@ -41,3 +41,4 @@ app.use("/en", AuthRoutes);
 app.use(express.static("public"));
 
 export default app;
+
