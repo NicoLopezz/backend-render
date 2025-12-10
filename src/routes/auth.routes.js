@@ -17,6 +17,7 @@ router.post("/update-welcome-modal" , autenthication.updateWelcomeModal)
 router.post("/update-onboarding-step" , autenthication.updateOnboardingStep)
 router.post("/update-profile-status" , autenthication.updateProfileStatus)
 router.post("/logout" , autenthication.logout)
+router.post("/set-session" , autenthication.setSessionFromToken)
 
 router.get("/post-register", (req, res) => {
     res.sendFile(path.join(__dirname,"../../public/post-register.html"));

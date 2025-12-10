@@ -497,42 +497,44 @@ async function verifyWithQuery(req, res) {
       referer: req.get('Referer'),
       ip: req.ip
     });
-    
+
     const { token } = req.query;
-    
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.oxygentoken.org';
+
     if (!token) {
       console.log("❌ No token provided in query");
-      return res.status(400).json({ 
-        success: false, 
-        message: "No token provided" 
-      });
+      return res.redirect(`${frontendUrl}/verify-error?error=no_token`);
     }
-    
+
     console.log("📧 Verifying token from query:", token);
-    
+
     // Decodifica el JWT
-    const decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET_KEY);
-    console.log("✅ Token decoded:", decoded);
-    
+    let decoded;
+    try {
+      decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET_KEY);
+      console.log("✅ Token decoded:", decoded);
+    } catch (jwtError) {
+      if (jwtError.name === 'TokenExpiredError') {
+        console.log("❌ Token expired");
+        return res.redirect(`${frontendUrl}/verify-error?error=expired`);
+      }
+      console.log("❌ Invalid token");
+      return res.redirect(`${frontendUrl}/verify-error?error=invalid`);
+    }
+
     // Verifica si el JWT tiene el campo "userMail"
     if (!decoded.userMail) {
       console.log("❌ Token does not contain userMail");
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid token" 
-      });
+      return res.redirect(`${frontendUrl}/verify-error?error=invalid`);
     }
-    
+
     // Busca el usuario en la base de datos
     const userDb = await Usuario.findOne({ email: decoded.userMail });
     if (!userDb) {
       console.log("❌ User not found:", decoded.userMail);
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
-      });
+      return res.redirect(`${frontendUrl}/verify-error?error=user_not_found`);
     }
-    
+
     // Procesa el código de afiliado si existe
     if (userDb.affiliateCode && userDb.usedAffiliateCode) {
       const affiliateCodeDoc = await LumenAffiliateCode.findById(userDb.usedAffiliateCode);
@@ -590,62 +592,25 @@ async function verifyWithQuery(req, res) {
     await userDb.save();
     console.log("✅ User verified successfully:", userDb.email);
 
-    // Generar JWT token para auto-login después de verificación
+    // Generar JWT token para auto-login
     const jwtToken = jsonwebtoken.sign(
       { userMail: userDb.email },
       process.env.JWT_SECRET_KEY,
       { expiresIn: "7d" }
     );
+    console.log("✅ JWT token generated for auto-login");
 
-    // Setear cookie JWT para auto-login
-    const isProduction = process.env.NODE_ENV === 'production';
-    res.cookie("jwt", jwtToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
-      path: "/"
-    });
-    console.log("✅ JWT cookie set for auto-login");
+    // Redirigir al frontend con el token de sesión en la URL
+    // El frontend usará este token para hacer auto-login
+    const redirectUrl = `${frontendUrl}/verify-success?session_token=${jwtToken}`;
+    console.log("🔄 Redirecting to frontend:", redirectUrl.substring(0, 80) + "...");
 
-    // Retorna éxito con user object completo
-    return res.status(200).json({
-      success: true,
-      message: "Email verified successfully",
-      user: {
-        fullName: userDb.fullName,
-        email: userDb.email,
-        isFirstLogin: userDb.isFirstLogin !== false,
-        welcomeModalShown: userDb.welcomeModalShown || false,
-        onboardingStep: userDb.onboardingStep || "pending",
-        affiliateCodeUsedAt: userDb.affiliateCodeUsedAt || null,
-        affiliateCode: userDb.affiliateCode || null,
-        bonusOMsReceived: userDb.bonusOMsReceived || 0,
-        saldoInicial: userDb.Estado_Financiero?.saldoInicial || 0
-      }
-    });
+    return res.redirect(redirectUrl);
 
   } catch (error) {
     console.error("❌ Verification error:", error.message);
-
-    if (error.name === 'TokenExpiredError') {
-      console.log("❌ Token expired");
-      return res.status(401).json({
-        success: false,
-        message: "Token expired"
-      });
-    } else if (error.name === 'JsonWebTokenError') {
-      console.log("❌ Invalid token");
-      return res.status(400).json({
-        success: false,
-        message: "Invalid token"
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error"
-    });
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.oxygentoken.org';
+    return res.redirect(`${frontendUrl}/verify-error?error=server_error`);
   }
 }
 
@@ -1428,6 +1393,84 @@ async function status2FA(req, res) {
   }
 }
 
+async function setSessionFromToken(req, res) {
+  try {
+    const { session_token } = req.body;
+
+    if (!session_token) {
+      return res.status(400).json({
+        success: false,
+        message: "Session token is required"
+      });
+    }
+
+    console.log("🔑 Setting session from token...");
+
+    // Verificar que el token sea válido
+    let decoded;
+    try {
+      decoded = jsonwebtoken.verify(session_token, process.env.JWT_SECRET_KEY);
+    } catch (jwtError) {
+      console.log("❌ Invalid session token:", jwtError.message);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired session token"
+      });
+    }
+
+    // Buscar el usuario
+    const userDb = await Usuario.findOne({ email: decoded.userMail });
+    if (!userDb) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Setear la cookie
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie("jwt", session_token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+      path: "/"
+    });
+
+    console.log("✅ Session cookie set for user:", userDb.email);
+
+    return res.status(200).json({
+      success: true,
+      message: "Session established successfully",
+      user: {
+        email: userDb.email,
+        fullName: userDb.fullName,
+        country: userDb.country,
+        companyName: userDb.companyName,
+        affiliateCode: userDb.affiliateCode,
+        bonusOMsReceived: userDb.bonusOMsReceived,
+        affiliateCodeUsedAt: userDb.affiliateCodeUsedAt,
+        saldoInicial: userDb.Estado_Financiero?.saldoInicial || 0,
+        isFirstLogin: userDb.isFirstLogin !== false,
+        welcomeModalShown: userDb.welcomeModalShown || false,
+        onboardingStep: userDb.onboardingStep || 'pending',
+        profileCompleted: userDb.profileCompleted || false,
+        loginCount: userDb.loginCount || 0,
+        lastLoginAt: userDb.lastLoginAt,
+        Movimientos: userDb.Movimientos || [],
+        walletAddress: userDb.wallet_address || null
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Set session error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+}
+
 export const methods = {
     register,
     login,
@@ -1448,6 +1491,7 @@ export const methods = {
     verify2FA,
     status2FA,
     resetAffiliateCode,
+    setSessionFromToken,
   }
 
 async function resetAffiliateCode(req, res) {
