@@ -490,7 +490,8 @@ async function verifyCount(req,res){
 async function verifyWithQuery(req, res) {
   try {
     console.log("🔍 Email verification with query parameter started");
-    console.log("🚀 NEW CODE VERSION 2.0 - December 10, 2025");
+    console.log("🚀 NEW CODE VERSION 2.1 - December 10, 2025 - FORCE REBUILD");
+    console.log("🔥 This is the LATEST code - if you see this, Render deployed correctly");
 
     // Detectar si es una llamada fetch (AJAX) o navegación directa del navegador
     const acceptHeader = req.get('Accept') || '';
