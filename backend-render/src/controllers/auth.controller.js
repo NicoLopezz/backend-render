@@ -216,6 +216,7 @@ async function register(req, res) {
 
     if (affiliateCodeType) {
       responseData.affiliateCodeType = affiliateCodeType;
+      responseData.messageType = affiliateCodeDoc?.messageType || 'default';
       responseData.message += ` Affiliate code type: ${affiliateCodeType}`;
     }
 
@@ -329,91 +330,109 @@ async function login(req, res) {
       });
     }
 
-    console.log("✅ Email verified, checking first login status...");
-    
+    console.log("✅ Email verified, completing login...");
+
     const isFirstLogin = userDb.isFirstLogin === undefined || userDb.isFirstLogin === true;
-    
+
+    // Actualizar stats de login
     if (isFirstLogin) {
-      console.log("✅ First login detected, completing login without 2FA...");
-      
       userDb.isFirstLogin = false;
-      userDb.lastLoginAt = new Date();
-      userDb.loginCount = (userDb.loginCount || 0) + 1;
-      await userDb.save();
-      
-      console.log("✅ Login stats updated, generating JWT...");
-      
-      const jwtExpire = normalizeJWTExpire(process.env.JWT_EXPIRE);
-      console.log("🔑 JWT_EXPIRE original:", process.env.JWT_EXPIRE);
-      console.log("🔑 JWT_EXPIRE normalizado:", jwtExpire);
+    }
+    userDb.lastLoginAt = new Date();
+    userDb.loginCount = (userDb.loginCount || 0) + 1;
+    await userDb.save();
 
-      const token = jsonwebtoken.sign(
-        { userMail: userDb.email, userName: userDb.fullName },
-        process.env.JWT_SECRET_KEY,
-        { expiresIn: jwtExpire }
-      );
+    console.log("✅ Login stats updated, generating JWT...");
 
-      console.log("✅ JWT token generated successfully");
-
-      try {
-        const cookieOptions = {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-          maxAge: 24 * 60 * 60 * 1000,
-          path: "/"
-        };
-
-        res.cookie("jwt", token, cookieOptions);
-        res.cookie("username", userDb.fullName, cookieOptions);
-
-        console.log("✅ Session cookie stored successfully");
-
-        return res.status(201).json({
-          status: "logged",
-          message: `User ${userDb.email} has logged in successfully`,
-          user: {
-            email: userDb.email,
-            name: userDb.fullName,
-            fullName: userDb.fullName,
-            country: userDb.country,
-            companyName: userDb.companyName,
-            affiliateCode: userDb.affiliateCode,
-            bonusOMsReceived: userDb.bonusOMsReceived,
-            affiliateCodeUsedAt: userDb.affiliateCodeUsedAt,
-            saldoInicial: userDb.Estado_Financiero?.saldoInicial || 0,
-            isFirstLogin: false,
-            welcomeModalShown: userDb.welcomeModalShown || false,
-            onboardingStep: userDb.onboardingStep || 'pending',
-            profileCompleted: userDb.profileCompleted || false,
-            loginCount: userDb.loginCount || 0,
-            lastLoginAt: userDb.lastLoginAt,
-            Movimientos: userDb.Movimientos || [],
-            walletAddress: userDb.wallet_address || null
-          }
-        });
-      } catch (cookieError) {
-        console.error("❌ Cookie error:", cookieError.message);
-        return res.status(500).json({ status: "Error", message: "Cookie setting error" });
+    // Obtener messageType del código de afiliación si existe
+    let affiliateMessageType = 'default';
+    if (userDb.usedAffiliateCode) {
+      let affiliateCodeDoc = await LumenAffiliateCode.findById(userDb.usedAffiliateCode);
+      if (!affiliateCodeDoc) {
+        affiliateCodeDoc = await AffiliateCode.findById(userDb.usedAffiliateCode);
       }
-    } else {
+      if (affiliateCodeDoc) {
+        affiliateMessageType = affiliateCodeDoc.messageType || 'default';
+      }
+    }
+
+    const jwtExpire = normalizeJWTExpire(process.env.JWT_EXPIRE);
+    console.log("🔑 JWT_EXPIRE original:", process.env.JWT_EXPIRE);
+    console.log("🔑 JWT_EXPIRE normalizado:", jwtExpire);
+
+    const token = jsonwebtoken.sign(
+      { userMail: userDb.email, userName: userDb.fullName },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: jwtExpire }
+    );
+
+    console.log("✅ JWT token generated successfully");
+
+    try {
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 24 * 60 * 60 * 1000,
+        path: "/"
+      };
+
+      res.cookie("jwt", token, cookieOptions);
+      res.cookie("username", userDb.fullName, cookieOptions);
+
+      console.log("✅ Session cookie stored successfully");
+
+      return res.status(201).json({
+        status: "logged",
+        message: `User ${userDb.email} has logged in successfully`,
+        messageType: affiliateMessageType,
+        user: {
+          email: userDb.email,
+          name: userDb.fullName,
+          fullName: userDb.fullName,
+          country: userDb.country,
+          companyName: userDb.companyName,
+          affiliateCode: userDb.affiliateCode,
+          bonusOMsReceived: userDb.bonusOMsReceived,
+          affiliateCodeUsedAt: userDb.affiliateCodeUsedAt,
+          saldoInicial: userDb.Estado_Financiero?.saldoInicial || 0,
+          omBalance: userDb.omBalance || 0,
+          carbonCredits: userDb.carbonCredits || 0,
+          isFirstLogin: isFirstLogin,
+          welcomeModalShown: userDb.welcomeModalShown || false,
+          onboardingStep: userDb.onboardingStep || 'pending',
+          profileCompleted: userDb.profileCompleted || false,
+          loginCount: userDb.loginCount || 0,
+          lastLoginAt: userDb.lastLoginAt,
+          Movimientos: userDb.Movimientos || [],
+          walletAddress: userDb.wallet_address || null
+        }
+      });
+    } catch (cookieError) {
+      console.error("❌ Cookie error:", cookieError.message);
+      return res.status(500).json({ status: "Error", message: "Cookie setting error" });
+    }
+
+    // TODO: 2FA desactivado temporalmente - descomentar cuando sea necesario
+    /*
+    else {
       console.log("✅ Not first login, generating 2FA code...");
-      
+
       const twoFactorCode = generateSecure2FACode();
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 10);
-      
+
       userDb.twoFactorCode = twoFactorCode;
       userDb.twoFactorCodeExpires = expiresAt;
       await userDb.save();
-      
+
       console.log("✅ 2FA code generated and saved");
-      
+
       let lang = "es";
       if (req.originalUrl?.startsWith("/en/") || req.url?.startsWith("/en/")) {
         lang = "en";
       }
-      
+
       try {
         let mail;
         if (lang === "en") {
@@ -440,7 +459,7 @@ async function login(req, res) {
           requires2FA: true
         });
       }
-      
+
       return res.status(201).json({
         status: "2fa_required",
         message: "2FA code sent to your email. Please verify to complete login.",
@@ -448,6 +467,7 @@ async function login(req, res) {
         email: userDb.email
       });
     }
+    */
 
   } catch (error) {
     console.error("❌ Login error:", error.message);
@@ -584,10 +604,20 @@ async function verifyWithQuery(req, res) {
         message: "User not found" 
       });
     }
-    
+
     // Procesa el código de afiliado si existe
+    let affiliateMessageType = 'default';
     if (userDb.affiliateCode && userDb.usedAffiliateCode) {
-      const affiliateCodeDoc = await LumenAffiliateCode.findById(userDb.usedAffiliateCode);
+      let affiliateCodeDoc = await LumenAffiliateCode.findById(userDb.usedAffiliateCode);
+
+      // Si no está en Lumen, buscar en AffiliateCodes
+      if (!affiliateCodeDoc) {
+        affiliateCodeDoc = await AffiliateCode.findById(userDb.usedAffiliateCode);
+      }
+
+      if (affiliateCodeDoc) {
+        affiliateMessageType = affiliateCodeDoc.messageType || 'default';
+      }
 
       if (affiliateCodeDoc && !affiliateCodeDoc.isUsed) {
         affiliateCodeDoc.isUsed = true;
@@ -664,6 +694,7 @@ async function verifyWithQuery(req, res) {
     return res.status(200).json({
       success: true,
       message: "Email verified successfully",
+      messageType: affiliateMessageType,
       user: {
         fullName: userDb.fullName,
         email: userDb.email,
@@ -748,9 +779,19 @@ async function verifyEmailPost(req, res) {
     }
     
     // Procesa el código de afiliado si existe
+    let affiliateMessageType = 'default';
     if (userDb.affiliateCode && userDb.usedAffiliateCode) {
-      const affiliateCodeDoc = await LumenAffiliateCode.findById(userDb.usedAffiliateCode);
-      
+      let affiliateCodeDoc = await LumenAffiliateCode.findById(userDb.usedAffiliateCode);
+
+      // Si no está en Lumen, buscar en AffiliateCodes
+      if (!affiliateCodeDoc) {
+        affiliateCodeDoc = await AffiliateCode.findById(userDb.usedAffiliateCode);
+      }
+
+      if (affiliateCodeDoc) {
+        affiliateMessageType = affiliateCodeDoc.messageType || 'default';
+      }
+
       if (affiliateCodeDoc && !affiliateCodeDoc.isUsed) {
         affiliateCodeDoc.isUsed = true;
         affiliateCodeDoc.usedAt = new Date();
@@ -761,15 +802,15 @@ async function verifyEmailPost(req, res) {
           userAgent: req.get('User-Agent'),
           country: userDb.country
         };
-        
+
         await affiliateCodeDoc.save();
         console.log("✅ Affiliate code marked as used:", userDb.affiliateCode);
-        
+
         // Actualiza el saldo del usuario
         userDb.Estado_Financiero.saldoInicial = userDb.bonusOMsReceived;
         userDb.affiliateCodeUsedAt = new Date();
         console.log("✅ User balance updated with affiliate bonus:", userDb.bonusOMsReceived);
-        
+
         // Google Sheet update moved to verifyWithQuery only
       }
     }
@@ -779,19 +820,20 @@ async function verifyEmailPost(req, res) {
     userDb.Verify = true;
     await userDb.save();
     console.log("✅ User verified successfully:", userDb.email);
-    
+
     // Retorna éxito para que el frontend maneje la redirección
     const responseData = {
       success: true,
       email: userDb.email,
-      fullName: userDb.fullName
+      fullName: userDb.fullName,
+      messageType: affiliateMessageType
     };
-    
+
     // Incluir código de afiliado si se usó uno
     if (userDb.affiliateCode) {
       responseData.affiliateCode = userDb.affiliateCode;
     }
-    
+
     return res.status(200).json(responseData);
     
   } catch (error) {
@@ -877,11 +919,23 @@ const checkSession = async (req, res) => {
       
       console.log("✅ Session valid for user:", usuario.email);
       console.log("🔑 Wallet address from DB:", usuario.wallet_address);
-      
-      const hasActive2FA = usuario.twoFactorCode && 
-                          usuario.twoFactorCodeExpires && 
+
+      const hasActive2FA = usuario.twoFactorCode &&
+                          usuario.twoFactorCodeExpires &&
                           new Date() < new Date(usuario.twoFactorCodeExpires);
-      
+
+      // Obtener messageType del código de afiliación si existe
+      let affiliateMessageType = 'default';
+      if (usuario.usedAffiliateCode) {
+        let affiliateCodeDoc = await LumenAffiliateCode.findById(usuario.usedAffiliateCode);
+        if (!affiliateCodeDoc) {
+          affiliateCodeDoc = await AffiliateCode.findById(usuario.usedAffiliateCode);
+        }
+        if (affiliateCodeDoc) {
+          affiliateMessageType = affiliateCodeDoc.messageType || 'default';
+        }
+      }
+
       return res.json({
         loggedIn: true,
         username: decoded.userMail.split('@')[0],
@@ -892,6 +946,7 @@ const checkSession = async (req, res) => {
         affiliateCode: usuario.affiliateCode,
         bonusOMsReceived: usuario.bonusOMsReceived,
         affiliateCodeUsedAt: usuario.affiliateCodeUsedAt,
+        messageType: affiliateMessageType,
         saldoInicial: usuario.Estado_Financiero?.saldoInicial || 0,
         isNewUser: !usuario.welcomeModalShown,
         welcomeModalShown: usuario.welcomeModalShown || false,
@@ -1004,7 +1059,8 @@ async function verifyAffiliateCode(req, res) {
       data: {
         code: affiliateCode.code,
         bonusOMs: affiliateCode.bonusOMs,
-        affiliateCodeType: affiliateCodeType
+        affiliateCodeType: affiliateCodeType,
+        messageType: affiliateCode.messageType || 'default'
       }
     });
 
@@ -1386,9 +1442,21 @@ async function verify2FA(req, res) {
     userDb.lastLoginAt = new Date();
     userDb.loginCount = (userDb.loginCount || 0) + 1;
     await userDb.save();
-    
+
     console.log("✅ 2FA code verified successfully for user:", email);
-    
+
+    // Obtener messageType del código de afiliación si existe
+    let affiliateMessageType = 'default';
+    if (userDb.usedAffiliateCode) {
+      let affiliateCodeDoc = await LumenAffiliateCode.findById(userDb.usedAffiliateCode);
+      if (!affiliateCodeDoc) {
+        affiliateCodeDoc = await AffiliateCode.findById(userDb.usedAffiliateCode);
+      }
+      if (affiliateCodeDoc) {
+        affiliateMessageType = affiliateCodeDoc.messageType || 'default';
+      }
+    }
+
     const jwtExpire = normalizeJWTExpire(process.env.JWT_EXPIRE);
     const token = jsonwebtoken.sign(
       { userMail: userDb.email, userName: userDb.fullName },
@@ -1411,6 +1479,7 @@ async function verify2FA(req, res) {
       success: true,
       status: "logged",
       message: "2FA verified successfully. Login completed.",
+      messageType: affiliateMessageType,
       user: {
         email: userDb.email,
         name: userDb.fullName,
@@ -1421,6 +1490,8 @@ async function verify2FA(req, res) {
         bonusOMsReceived: userDb.bonusOMsReceived,
         affiliateCodeUsedAt: userDb.affiliateCodeUsedAt,
         saldoInicial: userDb.Estado_Financiero?.saldoInicial || 0,
+        omBalance: userDb.omBalance || 0,
+        carbonCredits: userDb.carbonCredits || 0,
         isFirstLogin: userDb.isFirstLogin || false,
         welcomeModalShown: userDb.welcomeModalShown || false,
         onboardingStep: userDb.onboardingStep || 'pending',

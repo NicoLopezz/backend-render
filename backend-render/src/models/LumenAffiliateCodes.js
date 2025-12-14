@@ -63,6 +63,11 @@ const LumenAffiliateCode = new Schema({
         type: String,
         default: null,
         trim: true
+    },
+    messageType: {
+        type: String,
+        enum: ['welcome', 'prize_1st', 'prize_2nd', 'prize_3rd', 'special', 'partner', 'default'],
+        default: 'default'
     }
 }, {
     timestamps: true,

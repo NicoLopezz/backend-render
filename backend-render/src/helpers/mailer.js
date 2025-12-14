@@ -148,7 +148,7 @@ function mailBienvenidaNuevoEstilo(email, token) {
   const isProduction = process.env.NODE_ENV === 'production';
   const baseUrl = isProduction 
     ? 'https://www.oxygentoken.org' 
-    : 'http://localhost:3000';
+    : 'http://localhost:3003';
   const verificationUrl = `${baseUrl}/es/verify-success?token=${token}`;
   
   return `
@@ -233,7 +233,7 @@ function mailBienvenidaNuevoEstiloEN(email, token) {
   const isProduction = process.env.NODE_ENV === 'production';
   const baseUrl = isProduction 
     ? 'https://www.oxygentoken.org' 
-    : 'http://localhost:3000';
+    : 'http://localhost:3003';
   const verificationUrl = `${baseUrl}/en/verify-success?token=${token}`;
   
   return `
