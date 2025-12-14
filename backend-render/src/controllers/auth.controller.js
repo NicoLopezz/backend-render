@@ -369,14 +369,16 @@ async function login(req, res) {
     console.log("✅ JWT token generated successfully");
 
     try {
+      // Cross-origin cookies requieren secure=true y sameSite=none
       const cookieOptions = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: true,
+        sameSite: "none",
         maxAge: 24 * 60 * 60 * 1000,
         path: "/"
       };
 
+      console.log("🔧 Setting cookies with secure: true, sameSite: none");
       res.cookie("jwt", token, cookieOptions);
       res.cookie("username", userDb.fullName, cookieOptions);
 
@@ -680,15 +682,18 @@ async function verifyWithQuery(req, res) {
     );
 
     // Setear cookie JWT para auto-login
-    const isProduction = process.env.NODE_ENV === 'production';
+    // En producción (Render) siempre usar secure y sameSite=none para cross-origin
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+    console.log("🔧 Cookie config - NODE_ENV:", process.env.NODE_ENV, "| RENDER:", process.env.RENDER, "| isProduction:", isProduction);
+
     res.cookie("jwt", jwtToken, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
+      secure: true, // Siempre true para HTTPS
+      sameSite: "none", // Siempre none para cross-origin
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
       path: "/"
     });
-    console.log("✅ JWT cookie set for auto-login");
+    console.log("✅ JWT cookie set for auto-login (secure: true, sameSite: none)");
 
     // Retorna éxito con user object completo
     return res.status(200).json({
@@ -1262,8 +1267,8 @@ async function logout(req, res) {
 
     res.cookie('jwt', '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: true,
+      sameSite: "none",
       path: '/',
       expires: new Date(0),
       maxAge: 0
