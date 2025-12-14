@@ -1,6 +1,4 @@
-.DS_Store
-.vscode/
 
-
-
-
+#enviroment variables
+.env
+node_modules
