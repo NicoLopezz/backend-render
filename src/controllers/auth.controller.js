@@ -2,7 +2,7 @@ import Usuario from '../models/Users.js'
 import LumenAffiliateCode from '../models/LumenAffiliateCodes.js'
 import AffiliateCode from '../models/AffiliateCodes.js'
 import bcrypt from 'bcryptjs'
-import {sendWelcomeEmailNuevoEstilo,sendWelcomeEmailNuevoEstiloEN,sendTwoFactorEmail,sendTwoFactorEmailEN} from '../helpers/mailer-resend.js'
+import {sendWelcomeEmailNuevoEstilo,sendWelcomeEmailNuevoEstiloEN,sendTwoFactorEmail,sendTwoFactorEmailEN,sendResetPasswordEmail,sendResetPasswordEmailEN} from '../helpers/mailer-resend.js'
 import jsonwebtoken from 'jsonwebtoken'
 import {config} from 'dotenv'
 import crypto from 'crypto'
@@ -1576,6 +1576,8 @@ export const methods = {
     verify2FA,
     status2FA,
     resetAffiliateCode,
+    forgotPassword,
+    resetPassword,
   }
 
 async function resetAffiliateCode(req, res) {
@@ -1648,5 +1650,129 @@ async function resetAffiliateCode(req, res) {
   }
 }
 
+async function forgotPassword(req, res) {
+  try {
+    const { email, lang } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required"
+      });
+    }
+
+    const user = await Usuario.findOne({ email: email.toLowerCase().trim() });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      console.log("🔍 Forgot password requested for non-existent email:", email);
+      return res.status(200).json({
+        success: true,
+        message: "If the email exists, you will receive a password reset link"
+      });
+    }
+
+    // Check if user is verified
+    if (!user.Verify) {
+      console.log("🔍 Forgot password requested for unverified email:", email);
+      return res.status(200).json({
+        success: true,
+        message: "If the email exists, you will receive a password reset link"
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    // Save hashed token to DB with 1 hour expiration
+    user.resetPasswordToken = resetTokenHash;
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await user.save();
+
+    // Send email with unhashed token
+    const emailResult = lang === 'en'
+      ? await sendResetPasswordEmailEN(email, resetToken)
+      : await sendResetPasswordEmail(email, resetToken);
+
+    if (!emailResult.success) {
+      console.error("❌ Failed to send reset password email:", emailResult.error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send email. Please try again later."
+      });
+    }
+
+    console.log("✅ Reset password email sent to:", email);
+    return res.status(200).json({
+      success: true,
+      message: "If the email exists, you will receive a password reset link"
+    });
+
+  } catch (error) {
+    console.error("❌ Forgot password error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+}
+
+async function resetPassword(req, res) {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Token and new password are required"
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long"
+      });
+    }
+
+    // Hash the token to compare with DB
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find user with valid token
+    const user = await Usuario.findOne({
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { $gt: new Date() }
+    });
+
+    if (!user) {
+      console.log("❌ Invalid or expired reset token");
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset token"
+      });
+    }
+
+    // Hash new password and save
+    const passHash = await bcrypt.hash(newPassword, 10);
+    user.password = passHash;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+
+    console.log("✅ Password reset successfully for:", user.email);
+    return res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully"
+    });
+
+  } catch (error) {
+    console.error("❌ Reset password error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+}
 
 

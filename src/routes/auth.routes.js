@@ -20,6 +20,8 @@ router.post("/2fa/generate" , autenthication.generate2FA)
 router.post("/2fa/verify" , autenthication.verify2FA)
 router.post("/2fa/status" , autenthication.status2FA)
 router.post("/reset-affiliate-code" , autenthication.resetAffiliateCode)
+router.post("/forgot-password" , autenthication.forgotPassword)
+router.post("/reset-password" , autenthication.resetPassword)
 
 router.get("/post-register", (req, res) => {
     res.sendFile(path.join(__dirname,"../../public/post-register.html"));

@@ -320,4 +320,171 @@ function mailTwoFactorAuthEN(email, code) {
   `;
 }
 
+// Reset Password Email Functions
+export async function sendResetPasswordEmail(direccion, token) {
+  try {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const baseUrl = isProduction
+      ? 'https://www.oxygentoken.org'
+      : 'http://localhost:3003';
+    const resetUrl = `${baseUrl}/es/reset-password?token=${token}`;
+
+    const { data, error } = await resend.emails.send({
+      from: 'Oxygen Group <noreply@oxygentoken.org>',
+      to: [direccion],
+      subject: 'Restablecer contraseña - Oxygen',
+      html: mailResetPassword(direccion, resetUrl),
+    });
+
+    if (error) {
+      console.error('❌ Resend error:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('✅ Reset password email sent successfully:', data.id);
+    return { success: true, messageId: data.id };
+  } catch (error) {
+    console.error('❌ Reset password email failed:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function sendResetPasswordEmailEN(direccion, token) {
+  try {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const baseUrl = isProduction
+      ? 'https://www.oxygentoken.org'
+      : 'http://localhost:3003';
+    const resetUrl = `${baseUrl}/en/reset-password?token=${token}`;
+
+    const { data, error } = await resend.emails.send({
+      from: 'Oxygen Group <noreply@oxygentoken.org>',
+      to: [direccion],
+      subject: 'Reset Password - Oxygen',
+      html: mailResetPasswordEN(direccion, resetUrl),
+    });
+
+    if (error) {
+      console.error('❌ Resend error:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('✅ Reset password email sent successfully:', data.id);
+    return { success: true, messageId: data.id };
+  } catch (error) {
+    console.error('❌ Reset password email failed:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+function mailResetPassword(email, resetUrl) {
+  return `
+  <html>
+  <body style="font-family: Arial, sans-serif; background-color: #f8fbfa; color: #2d3748; margin:0;padding:0;">
+    <div style="max-width:600px; margin:40px auto; background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(0,77,64,0.08); overflow:hidden;">
+      <div style="background:linear-gradient(135deg,#004d40 0%,#1ABC9C 100%); color:#fff; text-align:center; padding:30px 0;">
+        <h1 style="margin:0; font-size:28px; font-weight:600;">OXYGEN</h1>
+      </div>
+
+      <div style="padding:40px 30px; text-align:center;">
+        <h2 style="color:#004d40; font-size:28px; margin:0 0 20px; line-height:1.3;">
+          Restablecer contraseña
+        </h2>
+
+        <p style="font-size:16px; color:#666; margin-bottom:30px; line-height:1.6;">
+          Hemos recibido una solicitud para restablecer la contraseña de tu cuenta. Haz clic en el botón de abajo para crear una nueva contraseña.
+        </p>
+
+        <div style="margin:40px 0;">
+          <a href="${resetUrl}" style="background:linear-gradient(135deg,#1ABC9C 0%,#0e9c8a 100%);color:#fff;padding:18px 40px;text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;font-size:16px;box-shadow:0 4px 15px rgba(26,188,156,0.3);">
+            Restablecer contraseña
+          </a>
+        </div>
+
+        <p style="font-size:14px; color:#999; margin-top:30px;">
+          Este enlace expirará en 1 hora. Si no solicitaste restablecer tu contraseña, puedes ignorar este mensaje.
+        </p>
+
+        <hr style="border:0;border-top:1px solid #e2e8f0; margin:40px 0;">
+
+        <p style="font-size:14px; color:#666; margin-bottom:20px;">
+          ¿Tienes preguntas? Contáctanos en
+          <a href="mailto:support@oxygentoken.org" style="color:#1ABC9C;">support@oxygentoken.org</a>
+        </p>
+
+        <p style="font-style:italic; color:#999; margin:0;">
+          Con gratitud,<br>El equipo Oxygen
+        </p>
+      </div>
+
+      <div style="background:#004d40; color:#fff; text-align:center; font-size:14px; padding:20px 0;">
+        <div style="margin-bottom:10px;">
+          <a href="https://www.linkedin.com/company/oxygentoken/" style="margin:0 8px;"><img src="https://cdn-icons-png.flaticon.com/512/3536/3536505.png" alt="LinkedIn" width="24"></a>
+          <a href="https://x.com/OxygenToken" style="margin:0 8px;"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968958.png" alt="Twitter" width="24"></a>
+          <a href="https://instagram.com/oxygentoken" style="margin:0 8px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="24"></a>
+        </div>
+        Oxygen Token · Innovación al servicio del planeta<br>
+        © 2023 Todos los derechos reservados
+      </div>
+    </div>
+  </body>
+  </html>
+  `;
+}
+
+function mailResetPasswordEN(email, resetUrl) {
+  return `
+  <html>
+  <body style="font-family: Arial, sans-serif; background-color: #f8fbfa; color: #2d3748; margin:0;padding:0;">
+    <div style="max-width:600px; margin:40px auto; background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(0,77,64,0.08); overflow:hidden;">
+      <div style="background:linear-gradient(135deg,#004d40 0%,#1ABC9C 100%); color:#fff; text-align:center; padding:30px 0;">
+        <h1 style="margin:0; font-size:28px; font-weight:600;">OXYGEN</h1>
+      </div>
+
+      <div style="padding:40px 30px; text-align:center;">
+        <h2 style="color:#004d40; font-size:28px; margin:0 0 20px; line-height:1.3;">
+          Reset Password
+        </h2>
+
+        <p style="font-size:16px; color:#666; margin-bottom:30px; line-height:1.6;">
+          We received a request to reset your account password. Click the button below to create a new password.
+        </p>
+
+        <div style="margin:40px 0;">
+          <a href="${resetUrl}" style="background:linear-gradient(135deg,#1ABC9C 0%,#0e9c8a 100%);color:#fff;padding:18px 40px;text-decoration:none;border-radius:8px;font-weight:600;display:inline-block;font-size:16px;box-shadow:0 4px 15px rgba(26,188,156,0.3);">
+            Reset Password
+          </a>
+        </div>
+
+        <p style="font-size:14px; color:#999; margin-top:30px;">
+          This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this message.
+        </p>
+
+        <hr style="border:0;border-top:1px solid #e2e8f0; margin:40px 0;">
+
+        <p style="font-size:14px; color:#666; margin-bottom:20px;">
+          Have questions? Contact us at
+          <a href="mailto:support@oxygentoken.org" style="color:#1ABC9C;">support@oxygentoken.org</a>
+        </p>
+
+        <p style="font-style:italic; color:#999; margin:0;">
+          With gratitude,<br>The Oxygen Team
+        </p>
+      </div>
+
+      <div style="background:#004d40; color:#fff; text-align:center; font-size:14px; padding:20px 0;">
+        <div style="margin-bottom:10px;">
+          <a href="https://www.linkedin.com/company/oxygentoken/" style="margin:0 8px;"><img src="https://cdn-icons-png.flaticon.com/512/3536/3536505.png" alt="LinkedIn" width="24"></a>
+          <a href="https://x.com/OxygenToken" style="margin:0 8px;"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968958.png" alt="Twitter" width="24"></a>
+          <a href="https://instagram.com/oxygentoken" style="margin:0 8px;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="24"></a>
+        </div>
+        Oxygen Token · Innovation for the planet<br>
+        © 2023 All rights reserved
+      </div>
+    </div>
+  </body>
+  </html>
+  `;
+}
+
 export default resend;
