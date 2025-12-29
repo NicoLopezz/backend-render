@@ -1,6 +1,7 @@
 import Usuario from '../models/Users.js'
 import LumenAffiliateCode from '../models/LumenAffiliateCodes.js'
 import AffiliateCode from '../models/AffiliateCodes.js'
+import ReloadCode from '../models/ReloadCodes.js'
 import bcrypt from 'bcryptjs'
 import {sendWelcomeEmailNuevoEstilo,sendWelcomeEmailNuevoEstiloEN,sendTwoFactorEmail,sendTwoFactorEmailEN,sendResetPasswordEmail,sendResetPasswordEmailEN} from '../helpers/mailer-resend.js'
 import jsonwebtoken from 'jsonwebtoken'
@@ -1578,6 +1579,8 @@ export const methods = {
     resetAffiliateCode,
     forgotPassword,
     resetPassword,
+    redeemCode,
+    verifyReloadCode,
   }
 
 async function resetAffiliateCode(req, res) {
@@ -1775,4 +1778,250 @@ async function resetPassword(req, res) {
   }
 }
 
+async function redeemCode(req, res) {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: "Code is required"
+      });
+    }
+
+    // Get user from JWT cookie
+    const token = req.cookies.jwt;
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required"
+      });
+    }
+
+    let decoded;
+    try {
+      decoded = jsonwebtoken.verify(token, process.env.JWT_SECRET_KEY);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired token"
+      });
+    }
+
+    const user = await Usuario.findOne({ email: decoded.userMail });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Buscar código en todas las tablas
+    let foundCode = null;
+    let codeSource = null;
+    let omAmount = 0;
+
+    // 1. Buscar en ReloadCodes
+    foundCode = await ReloadCode.findByCode(code);
+    if (foundCode) {
+      codeSource = 'reload';
+      omAmount = foundCode.omAmount;
+    }
+
+    // 2. Buscar en LumenAffiliateCodes
+    if (!foundCode) {
+      foundCode = await LumenAffiliateCode.findByCode(code);
+      if (foundCode) {
+        codeSource = 'lumen';
+        omAmount = foundCode.bonusOMs;
+      }
+    }
+
+    // 3. Buscar en AffiliateCodes
+    if (!foundCode) {
+      foundCode = await AffiliateCode.findOne({ code: code });
+      if (foundCode) {
+        codeSource = 'affiliate';
+        omAmount = foundCode.bonusOMs;
+      }
+    }
+
+    if (!foundCode) {
+      console.log("❌ Code not found in any table:", code);
+      return res.status(404).json({
+        success: false,
+        message: "Invalid code"
+      });
+    }
+
+    // Validaciones comunes
+    if (!foundCode.isActive) {
+      console.log("❌ Code is not active:", code);
+      return res.status(400).json({
+        success: false,
+        message: "This code is no longer active"
+      });
+    }
+
+    if (foundCode.isUsed) {
+      console.log("❌ Code already used:", code);
+      return res.status(400).json({
+        success: false,
+        message: "This code has already been used"
+      });
+    }
+
+    if (foundCode.expiresAt && new Date() > foundCode.expiresAt) {
+      console.log("❌ Code expired:", code);
+      return res.status(400).json({
+        success: false,
+        message: "This code has expired"
+      });
+    }
+
+    // Credit OMs to user
+    user.omBalance = (user.omBalance || 0) + omAmount;
+
+    // Also update Estado_Financiero.saldoInicial
+    if (!user.Estado_Financiero) {
+      user.Estado_Financiero = { saldoInicial: 0 };
+    }
+    user.Estado_Financiero.saldoInicial = (user.Estado_Financiero.saldoInicial || 0) + omAmount;
+
+    // Add movement record
+    if (!user.Movimientos) {
+      user.Movimientos = [];
+    }
+    user.Movimientos.push({
+      tipo: `redeem_${codeSource}`,
+      cantidad: omAmount,
+      fecha: new Date()
+    });
+
+    await user.save();
+
+    // Mark code as used
+    foundCode.isUsed = true;
+    foundCode.usedBy = user._id;
+    foundCode.usedAt = new Date();
+    foundCode.usedEmail = user.email;
+    await foundCode.save();
+
+    console.log(`✅ Code redeemed: ${code} (${codeSource}) - ${omAmount} OMs credited to ${user.email}`);
+
+    return res.status(200).json({
+      success: true,
+      message: `${omAmount} OMs credited successfully`,
+      data: {
+        omAmount: omAmount,
+        newBalance: user.omBalance,
+        codeType: foundCode.type || foundCode.messageType || 'default',
+        source: codeSource
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Redeem code error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+}
+
+async function verifyReloadCode(req, res) {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: "Code is required"
+      });
+    }
+
+    let foundCode = null;
+    let codeSource = null;
+    let omAmount = 0;
+
+    // 1. Buscar en ReloadCodes
+    foundCode = await ReloadCode.findByCode(code);
+    if (foundCode) {
+      codeSource = 'reload';
+      omAmount = foundCode.omAmount;
+    }
+
+    // 2. Buscar en LumenAffiliateCodes
+    if (!foundCode) {
+      foundCode = await LumenAffiliateCode.findByCode(code);
+      if (foundCode) {
+        codeSource = 'lumen';
+        omAmount = foundCode.bonusOMs;
+      }
+    }
+
+    // 3. Buscar en AffiliateCodes
+    if (!foundCode) {
+      foundCode = await AffiliateCode.findOne({ code: code });
+      if (foundCode) {
+        codeSource = 'affiliate';
+        omAmount = foundCode.bonusOMs;
+      }
+    }
+
+    // No encontrado en ninguna tabla
+    if (!foundCode) {
+      return res.status(200).json({
+        success: false,
+        valid: false,
+        message: "Code not found"
+      });
+    }
+
+    // Validaciones comunes
+    if (!foundCode.isActive) {
+      return res.status(200).json({
+        success: false,
+        valid: false,
+        message: "This code is no longer active"
+      });
+    }
+
+    if (foundCode.isUsed) {
+      return res.status(200).json({
+        success: false,
+        valid: false,
+        message: "This code has already been used"
+      });
+    }
+
+    if (foundCode.expiresAt && new Date() > foundCode.expiresAt) {
+      return res.status(200).json({
+        success: false,
+        valid: false,
+        message: "This code has expired"
+      });
+    }
+
+    // Code is valid
+    return res.status(200).json({
+      success: true,
+      valid: true,
+      message: "Code is valid",
+      data: {
+        omAmount: omAmount,
+        type: foundCode.type || foundCode.messageType || 'default',
+        description: foundCode.description || foundCode.notes || null,
+        source: codeSource
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Verify reload code error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+}
 
